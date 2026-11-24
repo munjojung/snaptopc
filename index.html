@@ -459,6 +459,7 @@
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" }
       ];
+      let sessionTurnConfig = null;
 
       function getSavedTurnConfig() {
         try {
@@ -474,6 +475,35 @@
         } catch (e) {
           return { enabled: false, url: "", username: "", credential: "" };
         }
+      }
+
+      function encodeTurnParam(cfg) {
+        try {
+          const json = JSON.stringify({
+            u: cfg.url,
+            n: cfg.username,
+            c: cfg.credential
+          });
+          return btoa(unescape(encodeURIComponent(json)));
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function decodeTurnParam(token) {
+        try {
+          const json = decodeURIComponent(escape(atob(token)));
+          const parsed = JSON.parse(json);
+          if (parsed && parsed.u) {
+            return {
+              enabled: true,
+              url: String(parsed.u || "").trim(),
+              username: String(parsed.n || "").trim(),
+              credential: String(parsed.c || "").trim()
+            };
+          }
+        } catch (e) {}
+        return null;
       }
 
       function showView(viewName) {
@@ -513,7 +543,7 @@
 
       function getPeerConfig() {
         const iceServers = [...DEFAULT_ICE_SERVERS];
-        const cfg = getSavedTurnConfig();
+        const cfg = sessionTurnConfig || getSavedTurnConfig();
         if (cfg.enabled && cfg.url) {
           const urls = cfg.url
             .split(",")
@@ -776,13 +806,20 @@
         if (!qrEl || !inputEl || !roomCode) return;
 
         let baseUrl = (inputEl.value || "").trim() || getDefaultPcBaseUrl();
+        const turnCfg = getSavedTurnConfig();
+        const turnToken = (turnCfg.enabled && turnCfg.url) ? encodeTurnParam(turnCfg) : "";
         try {
           const parsed = new URL(baseUrl);
           parsed.searchParams.set("room", roomCode);
+          if (turnToken) {
+            parsed.searchParams.set("turn", turnToken);
+          } else {
+            parsed.searchParams.delete("turn");
+          }
           baseUrl = parsed.toString();
         } catch (e) {
           const sep = baseUrl.includes("?") ? "&" : "?";
-          baseUrl = `${baseUrl}${sep}room=${encodeURIComponent(roomCode)}`;
+          baseUrl = `${baseUrl}${sep}room=${encodeURIComponent(roomCode)}${turnToken ? `&turn=${encodeURIComponent(turnToken)}` : ""}`;
         }
 
         qrEl.innerHTML = "";
@@ -1702,6 +1739,9 @@
         document.getElementById("turn-username").value = "";
         document.getElementById("turn-credential").value = "";
         updateTurnStatusIndicator();
+        if (currentPcRoomCode) {
+          renderPcQrCode(currentPcRoomCode);
+        }
         showToast("TURN 설정이 초기화되었습니다. (내부망 기본 모드)", "info");
       });
 
@@ -1724,8 +1764,11 @@
         turnModal.classList.add("hidden");
         turnModal.classList.remove("flex");
 
-        if (currentPcRoomCode && pcPeer && !pcPeer.destroyed) {
-          bindPcPeer(currentPcRoomCode);
+        if (currentPcRoomCode) {
+          renderPcQrCode(currentPcRoomCode);
+          if (pcPeer && !pcPeer.destroyed) {
+            bindPcPeer(currentPcRoomCode);
+          }
         }
         showToast(
           enabled ? "외부망(TURN) 설정이 저장·적용되었습니다." : "내부망 기본 모드로 저장되었습니다.",
@@ -1733,8 +1776,15 @@
         );
       });
 
-      // URL 파라미터(?room=XXXXX)로 접속 시 자동으로 휴대폰 모드 열기
+      // URL 파라미터(?room=XXXXX&turn=...)로 접속 시 자동으로 휴대폰 모드 열기
       const urlParams = new URLSearchParams(window.location.search);
+      const turnParam = urlParams.get("turn");
+      if (turnParam) {
+        const decodedTurn = decodeTurnParam(turnParam);
+        if (decodedTurn) {
+          sessionTurnConfig = decodedTurn;
+        }
+      }
       const roomParam = urlParams.get("room");
       if (roomParam) {
         initPhoneMode(roomParam);
