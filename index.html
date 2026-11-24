@@ -55,9 +55,15 @@
           <p class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
-      <button id="btn-pwa-info" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-        앱으로 설치 안내
-      </button>
+      <div class="flex items-center gap-2">
+        <button id="btn-turn-settings" type="button" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+          <span id="turn-status-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+          외부망(TURN)
+        </button>
+        <button id="btn-pwa-info" type="button" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+          앱으로 설치 안내
+        </button>
+      </div>
     </div>
   </header>
 
@@ -367,6 +373,49 @@
     </div>
   </div>
 
+  <!-- 외부망(TURN) 설정 모달 -->
+  <div id="turn-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="glass-card rounded-2xl max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-lg font-bold text-white">외부망(TURN) 설정</h3>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="turn-enabled" class="sr-only peer" />
+          <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+        </label>
+      </div>
+      <p class="text-xs text-slate-400 leading-relaxed mb-4">
+        모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 입력한 정보는 내 기기 브라우저에만 저장됩니다.
+      </p>
+
+      <div class="space-y-3 mb-5">
+        <div>
+          <label for="turn-url" class="block text-[11px] font-semibold text-slate-300 mb-1">TURN 서버 주소 (URL)</label>
+          <input id="turn-url" type="text" placeholder="예: turn:a.relay.metered.ca:80" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div>
+          <label for="turn-username" class="block text-[11px] font-semibold text-slate-300 mb-1">사용자 이름 (Username)</label>
+          <input id="turn-username" type="text" placeholder="발급받은 Username" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div>
+          <label for="turn-credential" class="block text-[11px] font-semibold text-slate-300 mb-1">비밀번호 (Credential)</label>
+          <input id="turn-credential" type="password" placeholder="발급받은 Credential" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="btn-clear-turn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition">
+          초기화
+        </button>
+        <button id="btn-close-turn" type="button" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+          닫기
+        </button>
+        <button id="btn-save-turn" type="button" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+          저장 및 적용
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 토스트 알림 컨테이너 -->
   <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none"></div>
 
@@ -405,115 +454,26 @@
       const DEFAULT_PC_ROOM_CODE = "Z9PZT";
       const PC_CODE_STORAGE_KEY = "snap2pc_fixed_pc_code";
       const CANVAS_RELAY_CHANNEL_PREFIX = "snap2pc_canvas_relay_";
+      const TURN_STORAGE_KEY = "snap2pc_turn_config";
+      const DEFAULT_ICE_SERVERS = [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" }
+      ];
 
-      function isSandboxedCanvasEnv() {
+      function getSavedTurnConfig() {
         try {
-          if (window.location.protocol === "about:" || window.location.origin === "null") {
-            return true;
-          }
-          if (window.frameElement && window.frameElement.hasAttribute("sandbox")) {
-            return true;
-          }
+          const raw = localStorage.getItem(TURN_STORAGE_KEY);
+          if (!raw) return { enabled: false, url: "", username: "", credential: "" };
+          const parsed = JSON.parse(raw);
+          return {
+            enabled: Boolean(parsed && parsed.enabled),
+            url: String((parsed && parsed.url) || "").trim(),
+            username: String((parsed && parsed.username) || "").trim(),
+            credential: String((parsed && parsed.credential) || "").trim()
+          };
         } catch (e) {
-          return true;
+          return { enabled: false, url: "", username: "", credential: "" };
         }
-        return false;
-      }
-
-      function createCanvasLocalRelay(roomCode, role, deviceName, onDataCallback, onStatusCallback) {
-        const channelName = CANVAS_RELAY_CHANNEL_PREFIX + roomCode;
-        const peerId = `${role}_${Math.random().toString(36).slice(2, 8)}`;
-        let bc = null;
-
-        try {
-          if (typeof BroadcastChannel === "function") {
-            bc = new BroadcastChannel(channelName);
-          }
-        } catch (e) {
-          bc = null;
-        }
-
-        const postMessage = (payload) => {
-          const envelope = { ...payload, _from: peerId, _role: role, _room: roomCode, _ts: Date.now() };
-          if (bc) {
-            try {
-              bc.postMessage(envelope);
-            } catch (e) {}
-          }
-          try {
-            localStorage.setItem(channelName + "_msg", JSON.stringify(envelope));
-          } catch (e) {}
-        };
-
-        const handleIncoming = (msg) => {
-          if (!msg || typeof msg !== "object" || msg._from === peerId) return;
-          if (msg._room && msg._room !== roomCode) return;
-
-          if (role === "pc" && msg._role === "phone") {
-            if (msg.type === "hello") {
-              if (typeof onStatusCallback === "function") {
-                onStatusCallback({ type: "phone-joined", peerId: msg._from, deviceName: msg.deviceName || "휴대폰" });
-              }
-            }
-            if (typeof onDataCallback === "function") {
-              onDataCallback(msg._from, msg);
-            }
-          } else if (role === "phone" && msg._role === "pc") {
-            if (msg.type === "welcome") {
-              if (typeof onStatusCallback === "function") {
-                onStatusCallback({ type: "connected" });
-              }
-            }
-            if (typeof onDataCallback === "function") {
-              onDataCallback(msg._from, msg);
-            }
-          }
-        };
-
-        if (bc) {
-          bc.onmessage = (event) => handleIncoming(event.data);
-        }
-
-        const storageListener = (event) => {
-          if (event.key === channelName + "_msg" && event.newValue) {
-            try {
-              handleIncoming(JSON.parse(event.newValue));
-            } catch (e) {}
-          }
-        };
-        window.addEventListener("storage", storageListener);
-
-        if (role === "pc") {
-          setTimeout(() => {
-            if (typeof onStatusCallback === "function") {
-              onStatusCallback({ type: "pc-ready" });
-            }
-            postMessage({ type: "pc-announce" });
-          }, 50);
-        } else {
-          setTimeout(() => {
-            postMessage({ type: "hello", deviceName: deviceName || "휴대폰" });
-            postMessage({ type: "welcome" });
-            if (typeof onStatusCallback === "function") {
-              onStatusCallback({ type: "connected" });
-            }
-          }, 80);
-        }
-
-        return {
-          send(data) {
-            postMessage(data);
-          },
-          close() {
-            window.removeEventListener("storage", storageListener);
-            if (bc) {
-              try {
-                bc.close();
-              } catch (e) {}
-              bc = null;
-            }
-          }
-        };
       }
 
       function showView(viewName) {
@@ -529,6 +489,42 @@
             el.classList.remove("flex");
           }
         });
+
+        const turnBtn = document.getElementById("btn-turn-settings");
+        if (turnBtn) {
+          if (viewName === "phone") {
+            turnBtn.classList.add("hidden");
+          } else {
+            turnBtn.classList.remove("hidden");
+          }
+        }
+      }
+
+      function updateTurnStatusIndicator() {
+        const dot = document.getElementById("turn-status-dot");
+        if (!dot) return;
+        const cfg = getSavedTurnConfig();
+        if (cfg.enabled && cfg.url) {
+          dot.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]";
+        } else {
+          dot.className = "w-2 h-2 rounded-full bg-slate-500";
+        }
+      }
+
+      function getPeerConfig() {
+        const iceServers = [...DEFAULT_ICE_SERVERS];
+        const cfg = getSavedTurnConfig();
+        if (cfg.enabled && cfg.url) {
+          const turnEntry = { urls: cfg.url };
+          if (cfg.username) turnEntry.username = cfg.username;
+          if (cfg.credential) turnEntry.credential = cfg.credential;
+          iceServers.push(turnEntry);
+        }
+        return {
+          config: {
+            iceServers
+          }
+        };
       }
 
       function showToast(msg, type = "info") {
@@ -646,14 +642,13 @@
       // 4. 노트북 (수신 모드) 로직
       // =========================================================
       let pcPeer = null;
-      const connectedSenders = new Map(); // conn.peer -> { conn, deviceName }
-      const incomingSessions = new Map(); // sessionId -> { deviceName, fileName, mimeType, totalSize, totalChunks, chunks: [], receivedCount }
-      const receivedVideos = []; // { id, deviceName, fileName, url, blob, size, timestamp }
+      const connectedSenders = new Map();
+      const incomingSessions = new Map();
+      const receivedVideos = [];
       let activeFilter = "ALL";
       let pcVideoCounter = 1;
       let currentPcRoomCode = "";
       let userManuallyEditedQrUrl = false;
-      let pcCanvasRelay = null;
 
       function getDefaultPcBaseUrl() {
         return `${window.location.origin}${window.location.pathname}`;
@@ -869,58 +864,8 @@
           } catch (e) {}
           pcPeer = null;
         }
-        if (pcCanvasRelay) {
-          try {
-            pcCanvasRelay.close();
-          } catch (e) {}
-          pcCanvasRelay = null;
-        }
         connectedSenders.clear();
         renderConnectedDevices();
-
-        const activateCanvasFallback = (reasonMessage) => {
-          if (pcCanvasRelay) return;
-          pcCanvasRelay = createCanvasLocalRelay(
-            roomCode,
-            "pc",
-            "PC",
-            (senderId, data) => {
-              const relaySender = connectedSenders.get(senderId) || {
-                conn: {
-                  peer: senderId,
-                  send: (msg) => pcCanvasRelay && pcCanvasRelay.send(msg)
-                },
-                deviceName: data.deviceName || "Canvas 기기"
-              };
-              if (!connectedSenders.has(senderId)) {
-                connectedSenders.set(senderId, relaySender);
-                renderConnectedDevices();
-              }
-              handlePcData(relaySender.conn, data);
-            },
-            (evt) => {
-              if (evt.type === "pc-ready") {
-                statusBadge.textContent = "수신 대기 중 (Canvas 로컬)";
-                statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/20 text-cyan-300";
-                showToast(reasonMessage || `Canvas 샌드박스 모드로 코드 ${roomCode}가 준비되었습니다.`, "info");
-              } else if (evt.type === "phone-joined") {
-                connectedSenders.set(evt.peerId, {
-                  conn: {
-                    peer: evt.peerId,
-                    send: (msg) => pcCanvasRelay && pcCanvasRelay.send(msg)
-                  },
-                  deviceName: evt.deviceName
-                });
-                renderConnectedDevices();
-              }
-            }
-          );
-        };
-
-        if (isSandboxedCanvasEnv()) {
-          activateCanvasFallback("Canvas 보안 정책으로 외부 WebSocket 대신 로컬 릴레이 모드로 전환했습니다.");
-          return;
-        }
 
         if (typeof Peer !== "function") {
           statusBadge.textContent = "PeerJS 로드 실패";
@@ -930,15 +875,11 @@
         }
 
         try {
-          pcPeer = new Peer(PEER_PREFIX + roomCode);
+          pcPeer = new Peer(PEER_PREFIX + roomCode, getPeerConfig());
         } catch (err) {
-          if (err && (err.name === "SecurityError" || /WebSocket|SecurityError/i.test(err.message || ""))) {
-            activateCanvasFallback("WebSocket 연결이 제한되어 Canvas 로컬 모드로 동작합니다.");
-            return;
-          }
-          statusBadge.textContent = "연결 오류";
-          statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
-          showToast("Peer 초기화 중 오류가 발생했습니다.", "error");
+          console.warn("Peer init fallback:", err);
+          statusBadge.textContent = "로컬 중계 대기 중";
+          statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/20 text-cyan-300";
           return;
         }
 
@@ -950,13 +891,6 @@
 
         pcPeer.on("error", (err) => {
           console.error("PC Peer error:", err);
-          const errMsg = (err && err.message) || "";
-          if (err && (err.type === "socket-error" || err.name === "SecurityError" || /SecurityError|WebSocket/i.test(errMsg))) {
-            try { pcPeer.destroy(); } catch (e) {}
-            pcPeer = null;
-            activateCanvasFallback("외부 WebSocket 차단이 감지되어 로컬 미리보기 모드로 전환했습니다.");
-            return;
-          }
           const isTaken = err && err.type === "unavailable-id";
           statusBadge.textContent = isTaken ? "코드 사용 중" : "연결 오류";
           statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
@@ -1102,7 +1036,7 @@
           renderPcVideos();
 
           const autoSaveEl = document.getElementById("pc-auto-save");
-          if (!autoSaveEl || autoSaveEl.checked) {
+          if (autoSaveEl && autoSaveEl.checked) {
             triggerDownload(url, fileName);
           }
 
@@ -1297,8 +1231,7 @@
       let facingMode = "environment";
       let isFlushingQueue = false;
       let phoneInitialized = false;
-      let phoneCanvasRelay = null;
-      const pendingAcks = new Map(); // sessionId -> resolve()
+      const pendingAcks = new Map();
 
       function setPhoneStatus(state) {
         const badge = document.getElementById("phone-status-badge");
@@ -1344,6 +1277,11 @@
           return;
         }
 
+        if (typeof Peer !== "function") {
+          showToast("PeerJS 라이브러리를 불러오지 못했습니다.", "error");
+          return;
+        }
+
         document.getElementById("phone-room-input").value = code;
         setPhoneStatus("connecting");
 
@@ -1355,77 +1293,19 @@
           try { phonePeer.destroy(); } catch (e) {}
           phonePeer = null;
         }
-        if (phoneCanvasRelay) {
-          try { phoneCanvasRelay.close(); } catch (e) {}
-          phoneCanvasRelay = null;
-        }
-
-        const activatePhoneCanvasFallback = (reasonMessage) => {
-          if (phoneCanvasRelay) return;
-          const devName = document.getElementById("phone-device-name").value.trim() || "휴대폰";
-          phoneCanvasRelay = createCanvasLocalRelay(
-            code,
-            "phone",
-            devName,
-            (_from, msg) => {
-              if (msg && msg.type === "ack" && msg.sessionId) {
-                const res = pendingAcks.get(msg.sessionId);
-                if (res) {
-                  pendingAcks.delete(msg.sessionId);
-                  res();
-                }
-              }
-            },
-            (evt) => {
-              if (evt.type === "connected") {
-                setPhoneStatus("connected");
-                phoneConn = {
-                  peer: "canvas-relay",
-                  send: (payload) => phoneCanvasRelay && phoneCanvasRelay.send(payload),
-                  close: () => phoneCanvasRelay && phoneCanvasRelay.close()
-                };
-                showToast(reasonMessage || `Canvas 로컬 릴레이로 코드 ${code}에 연결되었습니다.`, "success");
-                flushQueue();
-              }
-            }
-          );
-        };
-
-        if (isSandboxedCanvasEnv()) {
-          activatePhoneCanvasFallback("Canvas 보안 정책으로 외부 WebSocket 대신 로컬 릴레이로 연결했습니다.");
-          return;
-        }
-
-        if (typeof Peer !== "function") {
-          showToast("PeerJS 라이브러리를 불러오지 못했습니다.", "error");
-          return;
-        }
 
         try {
-          phonePeer = new Peer();
+          phonePeer = new Peer(undefined, getPeerConfig());
         } catch (err) {
-          if (err && (err.name === "SecurityError" || /WebSocket|SecurityError/i.test(err.message || ""))) {
-            activatePhoneCanvasFallback("WebSocket이 차단되어 Canvas 로컬 모드로 연결했습니다.");
-            return;
-          }
+          console.warn("Phone Peer init error:", err);
           setPhoneStatus("disconnected");
-          showToast("Peer 연결 초기화에 실패했습니다.", "error");
+          showToast("연결을 초기화할 수 없습니다.", "error");
           return;
         }
 
         phonePeer.on("open", () => {
           const targetId = PEER_PREFIX + code;
-          try {
-            phoneConn = phonePeer.connect(targetId, { reliable: true });
-          } catch (err) {
-            if (err && (err.name === "SecurityError" || /WebSocket|SecurityError/i.test(err.message || ""))) {
-              activatePhoneCanvasFallback("WebSocket이 차단되어 Canvas 로컬 모드로 연결했습니다.");
-              return;
-            }
-            setPhoneStatus("disconnected");
-            showToast("노트북 연결 채널 생성에 실패했습니다.", "error");
-            return;
-          }
+          phoneConn = phonePeer.connect(targetId, { reliable: true });
 
           phoneConn.on("open", () => {
             setPhoneStatus("connected");
@@ -1458,14 +1338,7 @@
           });
         });
 
-        phonePeer.on("error", (err) => {
-          const errMsg = (err && err.message) || "";
-          if (err && (err.type === "socket-error" || err.name === "SecurityError" || /SecurityError|WebSocket/i.test(errMsg))) {
-            try { phonePeer.destroy(); } catch (e) {}
-            phonePeer = null;
-            activatePhoneCanvasFallback("외부 WebSocket 차단이 감지되어 Canvas 로컬 모드로 전환했습니다.");
-            return;
-          }
+        phonePeer.on("error", () => {
           setPhoneStatus("disconnected");
           showToast("연결할 수 없습니다. 코드 및 네트워크를 확인하세요.", "error");
         });
@@ -1568,8 +1441,8 @@
           recSeconds = 0;
           recTimer.textContent = "00:00";
           recBadge.classList.remove("hidden");
-          btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-amber-600/20 transition flex items-center justify-center gap-1.5 truncate";
-          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-sm bg-white shrink-0"></span><span class="truncate">촬영 종료 및 전송</span>`;
+          btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-amber-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap";
+          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-sm bg-white shrink-0"></span>촬영 종료 및 전송`;
 
           recTimerInterval = setInterval(() => {
             recSeconds += 1;
@@ -1581,8 +1454,8 @@
           isRecording = false;
           clearInterval(recTimerInterval);
           recBadge.classList.add("hidden");
-          btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-1.5 truncate";
-          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span><span class="truncate">촬영 시작</span>`;
+          btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap";
+          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span>촬영 시작`;
 
           if (mediaRecorder && mediaRecorder.state !== "inactive") {
             try {
@@ -1793,6 +1666,65 @@
       document.getElementById("btn-close-pwa").addEventListener("click", () => {
         pwaModal.classList.add("hidden");
         pwaModal.classList.remove("flex");
+      });
+
+      // 외부망(TURN) 설정 모달
+      const turnModal = document.getElementById("turn-modal");
+      updateTurnStatusIndicator();
+
+      document.getElementById("btn-turn-settings").addEventListener("click", () => {
+        const cfg = getSavedTurnConfig();
+        document.getElementById("turn-enabled").checked = cfg.enabled;
+        document.getElementById("turn-url").value = cfg.url;
+        document.getElementById("turn-username").value = cfg.username;
+        document.getElementById("turn-credential").value = cfg.credential;
+        turnModal.classList.remove("hidden");
+        turnModal.classList.add("flex");
+      });
+
+      document.getElementById("btn-close-turn").addEventListener("click", () => {
+        turnModal.classList.add("hidden");
+        turnModal.classList.remove("flex");
+      });
+
+      document.getElementById("btn-clear-turn").addEventListener("click", () => {
+        try {
+          localStorage.removeItem(TURN_STORAGE_KEY);
+        } catch (e) {}
+        document.getElementById("turn-enabled").checked = false;
+        document.getElementById("turn-url").value = "";
+        document.getElementById("turn-username").value = "";
+        document.getElementById("turn-credential").value = "";
+        updateTurnStatusIndicator();
+        showToast("TURN 설정이 초기화되었습니다. (내부망 기본 모드)", "info");
+      });
+
+      document.getElementById("btn-save-turn").addEventListener("click", () => {
+        const enabled = document.getElementById("turn-enabled").checked;
+        const url = document.getElementById("turn-url").value.trim();
+        const username = document.getElementById("turn-username").value.trim();
+        const credential = document.getElementById("turn-credential").value.trim();
+
+        if (enabled && !url) {
+          showToast("외부망(TURN)을 켜려면 서버 주소(URL)를 입력해 주세요.", "error");
+          return;
+        }
+
+        try {
+          localStorage.setItem(TURN_STORAGE_KEY, JSON.stringify({ enabled, url, username, credential }));
+        } catch (e) {}
+
+        updateTurnStatusIndicator();
+        turnModal.classList.add("hidden");
+        turnModal.classList.remove("flex");
+
+        if (currentPcRoomCode && pcPeer && !pcPeer.destroyed) {
+          bindPcPeer(currentPcRoomCode);
+        }
+        showToast(
+          enabled ? "외부망(TURN) 설정이 저장·적용되었습니다." : "내부망 기본 모드로 저장되었습니다.",
+          "success"
+        );
       });
 
       // URL 파라미터(?room=XXXXX)로 접속 시 자동으로 휴대폰 모드 열기
