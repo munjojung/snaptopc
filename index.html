@@ -78,7 +78,7 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
         <!-- 노트북 (받기 모드) -->
-        <button id="btn-mode-pc" class="glass-card rounded-2xl p-6 text-left hover:border-indigo-500/60 hover:bg-slate-800/80 transition group flex flex-col justify-between">
+        <button id="btn-mode-pc" type="button" class="glass-card rounded-2xl p-6 text-left hover:border-indigo-500/60 hover:bg-slate-800/80 transition group flex flex-col justify-between">
           <div>
             <div class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -96,7 +96,7 @@
         </button>
 
         <!-- 휴대폰 (보내기 모드) -->
-        <button id="btn-mode-phone" class="glass-card rounded-2xl p-6 text-left hover:border-cyan-500/60 hover:bg-slate-800/80 transition group flex flex-col justify-between">
+        <button id="btn-mode-phone" type="button" class="glass-card rounded-2xl p-6 text-left hover:border-cyan-500/60 hover:bg-slate-800/80 transition group flex flex-col justify-between">
           <div>
             <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -128,8 +128,36 @@
           </div>
 
           <p class="text-xs text-slate-400 mb-1">휴대폰에서 아래 코드를 입력하세요</p>
-          <div id="pc-room-code" class="text-3xl font-extrabold tracking-[0.25em] text-white bg-slate-900/90 px-5 py-2.5 rounded-xl border border-slate-700 mb-4 select-all">
-            -----
+          <div class="w-full flex flex-wrap items-center justify-center gap-2 mb-4">
+            <div id="pc-room-code" class="text-3xl font-extrabold tracking-[0.25em] text-white bg-slate-900/90 px-5 py-2.5 rounded-xl border border-slate-700 select-all">
+              Z9PZT
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="btn-edit-pc-code" type="button" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700 transition" title="연결 코드 변경">
+                코드 변경
+              </button>
+              <button id="btn-reset-pc-code" type="button" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-indigo-300 border border-slate-700 transition" title="기본 코드(Z9PZT)로 복원">
+                Z9PZT 복원
+              </button>
+            </div>
+          </div>
+
+          <div id="pc-code-editor" class="hidden w-full bg-slate-900/80 p-2.5 rounded-xl border border-slate-700 mb-4">
+            <div class="flex items-center gap-1.5">
+              <input
+                id="pc-custom-code-input"
+                type="text"
+                maxlength="8"
+                placeholder="예: Z9PZT"
+                class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white uppercase tracking-widest font-bold focus:outline-none focus:border-indigo-500"
+              />
+              <button id="btn-save-pc-code" type="button" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold whitespace-nowrap transition">
+                적용
+              </button>
+              <button id="btn-random-pc-code" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold whitespace-nowrap transition">
+                랜덤
+              </button>
+            </div>
           </div>
 
           <div id="pc-qrcode" class="bg-white p-3 rounded-xl mb-4 shadow-inner"></div>
@@ -138,16 +166,22 @@
           <div class="w-full text-left bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-3">
             <div class="flex items-center justify-between mb-1">
               <label for="pc-qr-base-url" class="text-[11px] font-semibold text-slate-300">QR 접속용 주소 (호스트/URL)</label>
-              <button id="btn-reset-qr-url" type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium">
-                현재 주소로 초기화
-              </button>
+              <div class="flex items-center gap-2">
+                <button id="btn-detect-local-ip" type="button" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium">
+                  IP 자동 감지
+                </button>
+                <button id="btn-reset-qr-url" type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium">
+                  현재 주소로 초기화
+                </button>
+              </div>
             </div>
             <input
               id="pc-qr-base-url"
               type="text"
-              placeholder="예: http://192.168.0.15:5500/index.html"
+              placeholder="예: https://munjojung.github.io/snaptopc/"
               class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[11px] text-slate-100 focus:outline-none focus:border-indigo-500"
             />
+            <p id="pc-detected-ip-info" class="hidden text-[10px] text-cyan-400 mt-1 leading-snug"></p>
             <p id="pc-qr-url-warning" class="hidden text-[10px] text-amber-400 mt-1 leading-snug">
               현재 주소가 127.0.0.1/localhost입니다. 휴대폰 사파리 접속을 위해 노트북 IP 또는 HTTPS 주소를 입력하세요.
             </p>
@@ -182,23 +216,23 @@
           <div class="glass-card rounded-2xl p-5 flex-1 flex flex-col">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div>
-                <h3 class="text-base font-bold text-white">수신된 영상 목록</h3>
+                <h3 class="text-base font-bold text-white">수신된 미디어 목록</h3>
                 <p class="text-xs text-slate-400">기기별로 필터링하거나 일괄 다운로드할 수 있습니다.</p>
               </div>
-              <button id="btn-pc-download-all" class="hidden px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-500/20">
+              <button id="btn-pc-download-all" type="button" class="hidden px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-500/20">
                 전체 일괄 저장
               </button>
             </div>
 
             <!-- 기기 필터 탭 -->
             <div id="pc-filter-tabs" class="flex flex-wrap gap-1.5 mb-4">
-              <button data-filter="ALL" class="filter-tab px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">전체</button>
+              <button type="button" data-filter="ALL" class="filter-tab px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">전체</button>
             </div>
 
-            <!-- 영상 리스트 -->
+            <!-- 미디어 리스트 -->
             <div id="pc-video-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 content-start">
               <div class="col-span-full text-center py-12 text-slate-500 text-sm">
-                휴대폰에서 영상을 촬영해 전송하면 이곳에 표시됩니다.
+                휴대폰에서 영상이나 사진을 촬영해 전송하면 이곳에 표시됩니다.
               </div>
             </div>
           </div>
@@ -223,10 +257,10 @@
             <input id="phone-device-name" type="text" maxlength="16" placeholder="예: 철수-폰" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-500" />
           </div>
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">노트북 연결 코드 (5자리)</label>
+            <label class="block text-[11px] text-slate-400 mb-1">노트북 연결 코드</label>
             <div class="flex gap-1.5">
-              <input id="phone-room-input" type="text" maxlength="5" placeholder="A3F9K" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white uppercase tracking-widest font-bold focus:outline-none focus:border-cyan-500" />
-              <button id="btn-phone-connect" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold whitespace-nowrap transition">
+              <input id="phone-room-input" type="text" maxlength="8" placeholder="Z9PZT" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white uppercase tracking-widest font-bold focus:outline-none focus:border-cyan-500" />
+              <button id="btn-phone-connect" type="button" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold whitespace-nowrap transition">
                 연결
               </button>
             </div>
@@ -246,22 +280,29 @@
           </div>
 
           <!-- 카메라 전환 버튼 -->
-          <button id="btn-switch-cam" class="absolute top-3 right-3 p-2.5 rounded-full bg-slate-900/70 hover:bg-slate-800 text-white backdrop-blur border border-white/10 transition" title="전/후면 카메라 전환">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <button id="btn-switch-cam" type="button" class="absolute top-3 right-3 p-2.5 rounded-full bg-slate-900/75 hover:bg-slate-800 text-white border border-white/15 backdrop-blur transition" title="전/후면 카메라 전환">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
         </div>
 
-        <!-- 촬영 / 파일 선택 버튼 -->
-        <div class="flex items-center justify-center gap-3">
-          <button id="btn-record" class="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-white"></span>
+        <!-- 촬영 / 사진 / 파일 선택 버튼 -->
+        <div class="grid grid-cols-3 gap-2">
+          <button id="btn-record" type="button" class="w-full py-3.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span>
             촬영 시작
           </button>
-          <label class="px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer border border-slate-700 transition">
+          <button id="btn-capture-photo" type="button" class="w-full py-3.5 px-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            사진 찍기
+          </button>
+          <label class="w-full py-3.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold cursor-pointer border border-slate-700 transition flex items-center justify-center whitespace-nowrap">
             갤러리 선택
-            <input id="phone-file-input" type="file" accept="video/*" multiple class="hidden" />
+            <input id="phone-file-input" type="file" accept="video/*,image/*" multiple class="hidden" />
           </label>
         </div>
 
@@ -296,7 +337,7 @@
             <h3 class="text-sm font-bold text-white">전송 대기열 (오프라인 임시 저장)</h3>
             <p class="text-[11px] text-slate-400">미연결 시 이곳에 저장되며, 연결되면 자동 전송됩니다.</p>
           </div>
-          <button id="btn-flush-queue" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-300 border border-slate-700 transition">
+          <button id="btn-flush-queue" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-300 border border-slate-700 transition">
             지금 전송
           </button>
         </div>
@@ -320,7 +361,7 @@
         <li>• <strong>아이폰 (Safari):</strong> 하단 공유 버튼(□↑) → <em>홈 화면에 추가</em></li>
         <li>• <strong>노트북 (Chrome/Edge):</strong> 주소창 우측 설치 아이콘 클릭</li>
       </ul>
-      <button id="btn-close-pwa" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition">
+      <button id="btn-close-pwa" type="button" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition">
         확인
       </button>
     </div>
@@ -361,9 +402,27 @@
       // =========================================================
       const CHUNK_SIZE = 64 * 1024; // 64KB 청크
       const PEER_PREFIX = "snap2pc-";
+      const DEFAULT_PC_ROOM_CODE = "Z9PZT";
+      const PC_CODE_STORAGE_KEY = "snap2pc_fixed_pc_code";
+
+      function showView(viewName) {
+        const views = ["select", "pc", "phone"];
+        views.forEach((name) => {
+          const el = document.getElementById(`view-${name}`);
+          if (!el) return;
+          if (name === viewName) {
+            el.classList.remove("hidden");
+            el.classList.add("flex");
+          } else {
+            el.classList.add("hidden");
+            el.classList.remove("flex");
+          }
+        });
+      }
 
       function showToast(msg, type = "info") {
         const container = document.getElementById("toast-container");
+        if (!container) return;
         const el = document.createElement("div");
         const colors = {
           info: "bg-slate-800 border-slate-700 text-slate-100",
@@ -394,28 +453,27 @@
         return code;
       }
 
-      function formatTimestampForFile(date = new Date()) {
-        const pad = (n) => String(n).padStart(2, "0");
-        return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+      function normalizeRoomCode(rawCode) {
+        return String(rawCode || "")
+          .toUpperCase()
+          .replace(/[^A-Z0-9_-]/g, "")
+          .slice(0, 8);
       }
 
-      // 화면 전환
-      const viewSelect = document.getElementById("view-select");
-      const viewPc = document.getElementById("view-pc");
-      const viewPhone = document.getElementById("view-phone");
-
-      function showView(name) {
-        viewSelect.classList.add("hidden");
-        viewPc.classList.add("hidden");
-        viewPhone.classList.add("hidden");
-        if (name === "select") viewSelect.classList.remove("hidden");
-        if (name === "pc") {
-          viewPc.classList.remove("hidden");
-          viewPc.classList.add("flex");
+      function getSavedPcRoomCode() {
+        try {
+          const saved = normalizeRoomCode(localStorage.getItem(PC_CODE_STORAGE_KEY) || "");
+          return saved || DEFAULT_PC_ROOM_CODE;
+        } catch (e) {
+          return DEFAULT_PC_ROOM_CODE;
         }
-        if (name === "phone") {
-          viewPhone.classList.remove("hidden");
-          viewPhone.classList.add("flex");
+      }
+
+      function savePcRoomCode(code) {
+        try {
+          localStorage.setItem(PC_CODE_STORAGE_KEY, code);
+        } catch (e) {
+          console.warn("Failed to save PC room code:", e);
         }
       }
 
@@ -483,9 +541,110 @@
       let activeFilter = "ALL";
       let pcVideoCounter = 1;
       let currentPcRoomCode = "";
+      let userManuallyEditedQrUrl = false;
 
       function getDefaultPcBaseUrl() {
         return `${window.location.origin}${window.location.pathname}`;
+      }
+
+      function isPrivateOrLanIPv4(ip) {
+        if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return false;
+        if (ip === "127.0.0.1" || ip.startsWith("169.254.") || ip === "0.0.0.0") return false;
+        const parts = ip.split(".").map(Number);
+        if (parts.some((n) => n < 0 || n > 255)) return false;
+        if (parts[0] === 192 && parts[1] === 168) return true;
+        if (parts[0] === 10) return true;
+        if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+        return false;
+      }
+
+      async function detectLocalIPv4() {
+        return new Promise((resolve) => {
+          const foundIPs = new Set();
+          let resolved = false;
+
+          const finish = () => {
+            if (resolved) return;
+            resolved = true;
+            const list = Array.from(foundIPs);
+            const lanIp =
+              list.find((ip) => ip.startsWith("192.168.") || ip.startsWith("10.") || /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) ||
+              list[0] ||
+              null;
+            resolve(lanIp);
+          };
+
+          try {
+            const RTCPeerConn = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+            if (!RTCPeerConn) {
+              finish();
+              return;
+            }
+
+            const pc = new RTCPeerConn({ iceServers: [] });
+            pc.createDataChannel("ip-detect");
+
+            pc.onicecandidate = (event) => {
+              if (!event || !event.candidate || !event.candidate.candidate) {
+                finish();
+                return;
+              }
+              const cand = event.candidate.candidate;
+              const ipv4Matches = cand.match(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/g) || [];
+              ipv4Matches.forEach((ip) => {
+                if (isPrivateOrLanIPv4(ip)) {
+                  foundIPs.add(ip);
+                }
+              });
+            };
+
+            pc.createOffer()
+              .then((offer) => pc.setLocalDescription(offer))
+              .catch(() => finish());
+
+            setTimeout(() => {
+              try { pc.close(); } catch (e) {}
+              finish();
+            }, 1200);
+          } catch (e) {
+            finish();
+          }
+        });
+      }
+
+      function buildUrlWithDetectedIp(detectedIp) {
+        const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+        const port = window.location.port ? `:${window.location.port}` : "";
+        const pathname = window.location.pathname || "/";
+        return `${protocol}//${detectedIp}${port}${pathname}`;
+      }
+
+      async function applyAutoDetectedQrUrl(forceApply = false) {
+        const inputEl = document.getElementById("pc-qr-base-url");
+        const infoEl = document.getElementById("pc-detected-ip-info");
+        if (!inputEl) return null;
+
+        const ip = await detectLocalIPv4();
+        if (ip) {
+          const candidateUrl = buildUrlWithDetectedIp(ip);
+          if (infoEl) {
+            infoEl.textContent = `감지된 로컬 IP: ${ip}`;
+            infoEl.classList.remove("hidden");
+          }
+          if (forceApply || (!userManuallyEditedQrUrl && isLocalhostUrl(inputEl.value))) {
+            inputEl.value = candidateUrl;
+            if (currentPcRoomCode) {
+              renderPcQrCode(currentPcRoomCode);
+            }
+          }
+          return ip;
+        } else {
+          if (infoEl) {
+            infoEl.textContent = "브라우저 정책으로 로컬 IP가 숨겨졌을 수 있습니다. 직접 주소를 입력해 주세요.";
+            infoEl.classList.remove("hidden");
+          }
+          return null;
+        }
       }
 
       function isLocalhostUrl(urlStr) {
@@ -504,7 +663,6 @@
         if (!qrEl || !inputEl || !roomCode) return;
 
         let baseUrl = (inputEl.value || "").trim() || getDefaultPcBaseUrl();
-        // 사용자가 쿼리스트링 없이 기본 주소나 끝부분을 입력한 경우 안전하게 조합
         try {
           const parsed = new URL(baseUrl);
           parsed.searchParams.set("room", roomCode);
@@ -515,15 +673,21 @@
         }
 
         qrEl.innerHTML = "";
-        new QRCode(qrEl, {
-          text: baseUrl,
-          width: 150,
-          height: 150,
-          colorDark: "#0f172a",
-          colorLight: "#ffffff"
-        });
+        if (typeof QRCode === "function") {
+          new QRCode(qrEl, {
+            text: baseUrl,
+            width: 150,
+            height: 150,
+            colorDark: "#0f172a",
+            colorLight: "#ffffff"
+          });
+        } else {
+          qrEl.innerHTML = `<p class="text-[11px] text-slate-700 break-all max-w-[150px]">${baseUrl}</p>`;
+        }
 
-        localStorage.setItem("snap2pc_qr_base_url", (inputEl.value || "").trim());
+        try {
+          localStorage.setItem("snap2pc_qr_base_url", (inputEl.value || "").trim());
+        } catch (e) {}
 
         if (warnEl) {
           if (isLocalhostUrl(baseUrl)) {
@@ -534,22 +698,75 @@
         }
       }
 
+      function applyPcRoomCode(rawCode, options = {}) {
+        const normalized = normalizeRoomCode(rawCode);
+        if (!normalized) {
+          showToast("영문 또는 숫자로 된 연결 코드를 입력해 주세요.", "error");
+          return;
+        }
+
+        currentPcRoomCode = normalized;
+        savePcRoomCode(normalized);
+        document.getElementById("pc-room-code").textContent = normalized;
+        document.getElementById("pc-custom-code-input").value = normalized;
+        if (options.hideEditor) {
+          document.getElementById("pc-code-editor").classList.add("hidden");
+        }
+        renderPcQrCode(normalized);
+        bindPcPeer(normalized);
+      }
+
       function initPcMode() {
         showView("pc");
-        if (pcPeer) return;
 
-        const roomCode = generateRoomCode();
+        const roomCode = currentPcRoomCode || getSavedPcRoomCode();
         currentPcRoomCode = roomCode;
         document.getElementById("pc-room-code").textContent = roomCode;
+        document.getElementById("pc-custom-code-input").value = roomCode;
 
         const qrInputEl = document.getElementById("pc-qr-base-url");
-        const savedQrBase = localStorage.getItem("snap2pc_qr_base_url");
-        qrInputEl.value = savedQrBase || getDefaultPcBaseUrl();
+        let savedQrBase = "";
+        try {
+          savedQrBase = localStorage.getItem("snap2pc_qr_base_url") || "";
+        } catch (e) {}
 
-        // QR 코드 생성
+        if (!qrInputEl.value) {
+          qrInputEl.value = savedQrBase || getDefaultPcBaseUrl();
+          userManuallyEditedQrUrl = Boolean(savedQrBase);
+        }
+
         renderPcQrCode(roomCode);
 
+        if (!userManuallyEditedQrUrl && isLocalhostUrl(qrInputEl.value)) {
+          applyAutoDetectedQrUrl(false);
+        }
+
+        if (!pcPeer || pcPeer.destroyed) {
+          bindPcPeer(roomCode);
+        }
+      }
+
+      function bindPcPeer(roomCode) {
         const statusBadge = document.getElementById("pc-status-badge");
+        statusBadge.textContent = "연결 중...";
+        statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300";
+
+        if (pcPeer) {
+          try {
+            pcPeer.destroy();
+          } catch (e) {}
+          pcPeer = null;
+        }
+        connectedSenders.clear();
+        renderConnectedDevices();
+
+        if (typeof Peer !== "function") {
+          statusBadge.textContent = "PeerJS 로드 실패";
+          statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
+          showToast("네트워크 연결을 확인해 주세요. (PeerJS 스크립트 로드 실패)", "error");
+          return;
+        }
+
         pcPeer = new Peer(PEER_PREFIX + roomCode);
 
         pcPeer.on("open", () => {
@@ -560,9 +777,15 @@
 
         pcPeer.on("error", (err) => {
           console.error("PC Peer error:", err);
-          statusBadge.textContent = "연결 오류";
+          const isTaken = err && err.type === "unavailable-id";
+          statusBadge.textContent = isTaken ? "코드 사용 중" : "연결 오류";
           statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
-          showToast("시그널링 서버 연결에 실패했습니다.", "error");
+          showToast(
+            isTaken
+              ? `코드 ${roomCode}가 이미 사용 중입니다. 잠시 후 다시 시도하거나 코드를 변경해 주세요.`
+              : "시그널링 서버 연결에 실패했습니다.",
+            "error"
+          );
         });
 
         pcPeer.on("connection", (conn) => {
@@ -577,104 +800,137 @@
             connectedSenders.delete(conn.peer);
             renderConnectedDevices();
           });
+
+          conn.on("error", () => {
+            connectedSenders.delete(conn.peer);
+            renderConnectedDevices();
+          });
         });
       }
 
       function renderConnectedDevices() {
         const listEl = document.getElementById("pc-connected-devices");
         const countEl = document.getElementById("pc-device-count");
-        countEl.textContent = `${connectedSenders.size}대`;
+        if (!listEl || !countEl) return;
 
+        countEl.textContent = `${connectedSenders.size}대`;
         if (connectedSenders.size === 0) {
           listEl.innerHTML = `<p class="text-slate-500 text-center py-2">아직 연결된 휴대폰이 없습니다.</p>`;
           return;
         }
 
         listEl.innerHTML = "";
-        connectedSenders.forEach((info) => {
-          const item = document.createElement("div");
-          item.className = "flex items-center justify-between bg-slate-900/70 px-3 py-1.5 rounded-lg border border-slate-800";
-          item.innerHTML = `
-            <span class="text-slate-200 font-medium truncate">${info.deviceName}</span>
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        connectedSenders.forEach((sender) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between bg-slate-900/70 px-3 py-2 rounded-lg border border-slate-800";
+          row.innerHTML = `
+            <span class="text-slate-200 font-medium truncate">${sender.deviceName}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold shrink-0">연결됨</span>
           `;
-          listEl.appendChild(item);
+          listEl.appendChild(row);
         });
       }
 
-      function handlePcData(conn, msg) {
-        if (!msg || !msg.type) return;
+      function sanitizeFileNamePart(str) {
+        return String(str || "device")
+          .trim()
+          .replace(/[^a-zA-Z0-9가-힣_-]/g, "_")
+          .replace(/_+/g, "_")
+          .slice(0, 24) || "device";
+      }
 
-        if (msg.type === "hello") {
-          const sender = connectedSenders.get(conn.peer);
-          if (sender) {
-            sender.deviceName = msg.deviceName || "휴대폰";
-            renderConnectedDevices();
-            showToast(`${sender.deviceName} 기기가 연결되었습니다.`, "info");
-          }
+      function formatTimestampForFile() {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      }
+
+      function handlePcData(conn, data) {
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "hello") {
+          const devName = String(data.deviceName || "휴대폰").trim() || "휴대폰";
+          const current = connectedSenders.get(conn.peer) || { conn };
+          connectedSenders.set(conn.peer, { ...current, deviceName: devName });
+          renderConnectedDevices();
+          showToast(`${devName} 기기가 연결되었습니다.`, "info");
           return;
         }
 
-        if (msg.type === "meta") {
-          incomingSessions.set(msg.sessionId, {
-            deviceName: msg.deviceName || "휴대폰",
-            fileName: msg.fileName || "video.webm",
-            mimeType: msg.mimeType || "video/webm",
-            totalSize: msg.totalSize || 0,
-            totalChunks: msg.totalChunks || 1,
-            chunks: new Array(msg.totalChunks),
+        if (data.type === "meta") {
+          const sender = connectedSenders.get(conn.peer);
+          const deviceName = String(data.deviceName || (sender && sender.deviceName) || "휴대폰").trim();
+          if (sender) {
+            connectedSenders.set(conn.peer, { ...sender, deviceName });
+            renderConnectedDevices();
+          }
+
+          incomingSessions.set(data.sessionId, {
+            deviceName,
+            originalFileName: data.fileName || "video.webm",
+            mimeType: data.mimeType || "video/webm",
+            totalSize: Number(data.totalSize) || 0,
+            totalChunks: Math.max(1, Number(data.totalChunks) || 1),
+            chunks: [],
             receivedCount: 0
           });
           renderActiveTransfers();
           return;
         }
 
-        if (msg.type === "chunk") {
-          const sess = incomingSessions.get(msg.sessionId);
+        if (data.type === "chunk") {
+          const sess = incomingSessions.get(data.sessionId);
           if (!sess) return;
-          sess.chunks[msg.chunkIndex] = msg.data;
-          sess.receivedCount++;
+          if (sess.chunks[data.chunkIndex] === undefined) {
+            sess.receivedCount += 1;
+          }
+          sess.chunks[data.chunkIndex] = data.data;
           renderActiveTransfers();
           return;
         }
 
-        if (msg.type === "end") {
-          const sess = incomingSessions.get(msg.sessionId);
+        if (data.type === "end") {
+          const sess = incomingSessions.get(data.sessionId);
           if (!sess) return;
 
-          const blob = new Blob(sess.chunks, { type: sess.mimeType });
+          const validChunks = sess.chunks.filter(Boolean);
+          const blob = new Blob(validChunks, { type: sess.mimeType || "video/webm" });
           const url = URL.createObjectURL(blob);
-          const ext = sess.mimeType.includes("mp4") ? "mp4" : "webm";
-          const safeDevice = sess.deviceName.replace(/[^a-zA-Z0-9가-힣_-]/g, "_");
-          const structuredName = `${safeDevice}_${formatTimestampForFile()}_${String(pcVideoCounter++).padStart(3, "0")}.${ext}`;
+          const seq = String(pcVideoCounter++).padStart(3, "0");
+          const safeDev = sanitizeFileNamePart(sess.deviceName);
+          const isImage = (sess.mimeType || "").startsWith("image/") || /\.(jpg|jpeg|png|webp|gif)$/i.test(sess.originalFileName || "");
+          const extMatch = (sess.originalFileName || "").match(/\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif)$/i);
+          const ext = extMatch ? extMatch[0].toLowerCase() : (isImage ? ".jpg" : ".webm");
+          const fileName = `${safeDev}_${formatTimestampForFile()}_${seq}${ext}`;
+          const timestamp = new Date().toLocaleTimeString();
 
-          const videoObj = {
-            id: msg.sessionId,
+          const videoRecord = {
+            id: data.sessionId,
+            mediaType: isImage ? "image" : "video",
             deviceName: sess.deviceName,
-            fileName: structuredName,
+            fileName,
             url,
             blob,
-            size: blob.size,
-            timestamp: new Date().toLocaleTimeString()
+            size: blob.size || sess.totalSize,
+            timestamp
           };
 
-          receivedVideos.unshift(videoObj);
-          incomingSessions.delete(msg.sessionId);
+          receivedVideos.unshift(videoRecord);
+          incomingSessions.delete(data.sessionId);
           renderActiveTransfers();
           renderFilterTabs();
           renderPcVideos();
 
-          // 송신측에 완료 ACK 전송
+          const autoSaveEl = document.getElementById("pc-auto-save");
+          if (autoSaveEl && autoSaveEl.checked) {
+            triggerDownload(url, fileName);
+          }
+
           try {
-            conn.send({ type: "ack", sessionId: msg.sessionId });
+            conn.send({ type: "ack", sessionId: data.sessionId });
           } catch (e) {}
 
-          showToast(`${sess.deviceName}에서 영상 수신 완료!`, "success");
-
-          // 자동 저장 활성화 시 즉시 다운로드
-          if (document.getElementById("pc-auto-save").checked) {
-            triggerDownload(url, structuredName);
-          }
+          showToast(`${sess.deviceName}에서 ${fileName} 수신 완료!`, "success");
         }
       }
 
@@ -710,6 +966,7 @@
         tabsEl.innerHTML = "";
 
         const allBtn = document.createElement("button");
+        allBtn.type = "button";
         allBtn.className = `px-3 py-1 rounded-lg text-xs font-semibold transition ${activeFilter === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`;
         allBtn.textContent = `전체 (${receivedVideos.length})`;
         allBtn.onclick = () => { activeFilter = "ALL"; renderFilterTabs(); renderPcVideos(); };
@@ -718,6 +975,7 @@
         devices.forEach((dev) => {
           const count = receivedVideos.filter((v) => v.deviceName === dev).length;
           const btn = document.createElement("button");
+          btn.type = "button";
           btn.className = `px-3 py-1 rounded-lg text-xs font-semibold transition ${activeFilter === dev ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`;
           btn.textContent = `${dev} (${count})`;
           btn.onclick = () => { activeFilter = dev; renderFilterTabs(); renderPcVideos(); };
@@ -742,15 +1000,19 @@
         filtered.forEach((v) => {
           const card = document.createElement("div");
           card.className = "bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden flex flex-col";
+          const isImage = v.mediaType === "image" || (v.blob && v.blob.type && v.blob.type.startsWith("image/"));
+          const previewHtml = isImage
+            ? `<img src="${v.url}" alt="${v.fileName}" class="w-full aspect-video object-cover bg-black" />`
+            : `<video src="${v.url}" controls class="w-full aspect-video bg-black"></video>`;
           card.innerHTML = `
-            <video src="${v.url}" controls class="w-full aspect-video bg-black"></video>
+            ${previewHtml}
             <div class="p-3 flex items-center justify-between gap-2">
               <div class="min-w-0">
                 <div class="text-xs font-bold text-indigo-300 truncate">${v.deviceName}</div>
                 <div class="text-[11px] text-slate-400 truncate">${v.fileName}</div>
                 <div class="text-[10px] text-slate-500">${formatBytes(v.size)} · ${v.timestamp}</div>
               </div>
-              <button class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+              <button type="button" class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
                 저장
               </button>
             </div>
@@ -778,16 +1040,62 @@
 
       document.getElementById("btn-mode-pc").addEventListener("click", initPcMode);
 
+      document.getElementById("btn-edit-pc-code").addEventListener("click", () => {
+        const editor = document.getElementById("pc-code-editor");
+        const input = document.getElementById("pc-custom-code-input");
+        editor.classList.toggle("hidden");
+        if (!editor.classList.contains("hidden")) {
+          input.value = currentPcRoomCode || DEFAULT_PC_ROOM_CODE;
+          input.focus();
+          input.select();
+        }
+      });
+
+      document.getElementById("btn-save-pc-code").addEventListener("click", () => {
+        const val = document.getElementById("pc-custom-code-input").value;
+        applyPcRoomCode(val, { hideEditor: true });
+      });
+
+      document.getElementById("pc-custom-code-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          applyPcRoomCode(e.target.value, { hideEditor: true });
+        }
+      });
+
+      document.getElementById("btn-random-pc-code").addEventListener("click", () => {
+        applyPcRoomCode(generateRoomCode(), { hideEditor: true });
+      });
+
+      document.getElementById("btn-reset-pc-code").addEventListener("click", () => {
+        applyPcRoomCode(DEFAULT_PC_ROOM_CODE, { hideEditor: true });
+        showToast(`기본 연결 코드(${DEFAULT_PC_ROOM_CODE})로 복원했습니다.`, "info");
+      });
+
       document.getElementById("pc-qr-base-url").addEventListener("input", () => {
+        userManuallyEditedQrUrl = true;
         if (currentPcRoomCode) {
           renderPcQrCode(currentPcRoomCode);
         }
       });
 
+      document.getElementById("btn-detect-local-ip").addEventListener("click", async () => {
+        const ip = await applyAutoDetectedQrUrl(true);
+        if (ip) {
+          userManuallyEditedQrUrl = true;
+          showToast(`로컬 IP (${ip})로 QR 주소가 갱신되었습니다.`, "success");
+        } else {
+          showToast("로컬 IP를 자동 감지하지 못했습니다. 직접 입력해 주세요.", "info");
+        }
+      });
+
       document.getElementById("btn-reset-qr-url").addEventListener("click", () => {
         const defaultUrl = getDefaultPcBaseUrl();
+        userManuallyEditedQrUrl = false;
         document.getElementById("pc-qr-base-url").value = defaultUrl;
-        localStorage.removeItem("snap2pc_qr_base_url");
+        try {
+          localStorage.removeItem("snap2pc_qr_base_url");
+        } catch (e) {}
         if (currentPcRoomCode) {
           renderPcQrCode(currentPcRoomCode);
         }
@@ -808,6 +1116,7 @@
       let recSeconds = 0;
       let facingMode = "environment";
       let isFlushingQueue = false;
+      let phoneInitialized = false;
       const pendingAcks = new Map(); // sessionId -> resolve()
 
       function setPhoneStatus(state) {
@@ -828,6 +1137,10 @@
       }
 
       async function startCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showToast("이 환경에서는 카메라 API를 사용할 수 없습니다. (갤러리 선택 이용 가능)", "info");
+          return;
+        }
         if (mediaStream) {
           mediaStream.getTracks().forEach((t) => t.stop());
         }
@@ -843,57 +1156,43 @@
         }
       }
 
-      function initPhoneMode(prefillRoom = "") {
-        showView("phone");
-        const savedName = localStorage.getItem("snap2pc_device_name") || `휴대폰-${Math.floor(100 + Math.random() * 900)}`;
-        document.getElementById("phone-device-name").value = savedName;
-
-        const saveLocalToggle = document.getElementById("phone-save-local");
-        saveLocalToggle.checked = localStorage.getItem("snap2pc_save_local") === "true";
-
-        if (prefillRoom) {
-          document.getElementById("phone-room-input").value = prefillRoom.toUpperCase();
-        }
-        startCamera();
-        renderQueueList();
-
-        if (prefillRoom) {
-          connectToPc(prefillRoom.toUpperCase());
-        }
-      }
-
-      document.getElementById("btn-mode-phone").addEventListener("click", () => initPhoneMode());
-
-      document.getElementById("phone-save-local").addEventListener("change", (e) => {
-        localStorage.setItem("snap2pc_save_local", String(e.target.checked));
-        showToast(e.target.checked ? "내 기기에도 저장 기능이 켜졌습니다." : "내 기기에도 저장 기능이 꺼졌습니다.", "info");
-      });
-
-      document.getElementById("btn-switch-cam").addEventListener("click", () => {
-        facingMode = facingMode === "environment" ? "user" : "environment";
-        startCamera();
-      });
-
-      function connectToPc(roomCode) {
-        if (!roomCode || roomCode.length < 4) {
-          showToast("5자리 연결 코드를 입력해 주세요.", "error");
+      function connectToPc(rawCode) {
+        const code = normalizeRoomCode(rawCode);
+        if (!code) {
+          showToast("연결 코드를 입력해 주세요.", "error");
           return;
         }
+
+        if (typeof Peer !== "function") {
+          showToast("PeerJS 라이브러리를 불러오지 못했습니다.", "error");
+          return;
+        }
+
+        document.getElementById("phone-room-input").value = code;
         setPhoneStatus("connecting");
 
+        if (phoneConn) {
+          try { phoneConn.close(); } catch (e) {}
+          phoneConn = null;
+        }
         if (phonePeer) {
           try { phonePeer.destroy(); } catch (e) {}
+          phonePeer = null;
         }
 
         phonePeer = new Peer();
+
         phonePeer.on("open", () => {
-          phoneConn = phonePeer.connect(PEER_PREFIX + roomCode, { reliable: true });
+          const targetId = PEER_PREFIX + code;
+          phoneConn = phonePeer.connect(targetId, { reliable: true });
 
           phoneConn.on("open", () => {
             setPhoneStatus("connected");
             const devName = document.getElementById("phone-device-name").value.trim() || "휴대폰";
-            phoneConn.send({ type: "hello", deviceName: devName });
-            showToast("노트북과 연결되었습니다!", "success");
+            try {
+              phoneConn.send({ type: "hello", deviceName: devName });
+            } catch (e) {}
+            showToast(`노트북(${code})과 연결되었습니다.`, "success");
             flushQueue();
           });
 
@@ -924,8 +1223,57 @@
         });
       }
 
+      function initPhoneMode(prefillRoom = "") {
+        showView("phone");
+
+        const nameInput = document.getElementById("phone-device-name");
+        const roomInput = document.getElementById("phone-room-input");
+
+        if (!phoneInitialized) {
+          phoneInitialized = true;
+          let savedName = "";
+          try {
+            savedName = localStorage.getItem("snap2pc_device_name") || "";
+          } catch (e) {}
+          nameInput.value = savedName || `휴대폰-${Math.floor(100 + Math.random() * 900)}`;
+
+          nameInput.addEventListener("change", () => {
+            const trimmed = nameInput.value.trim() || "휴대폰";
+            nameInput.value = trimmed;
+            try {
+              localStorage.setItem("snap2pc_device_name", trimmed);
+            } catch (e) {}
+            if (isPhoneConnected && phoneConn) {
+              try {
+                phoneConn.send({ type: "hello", deviceName: trimmed });
+              } catch (e) {}
+            }
+          });
+        }
+
+        if (prefillRoom) {
+          const cleanRoom = normalizeRoomCode(prefillRoom);
+          roomInput.value = cleanRoom;
+          connectToPc(cleanRoom);
+        } else if (!roomInput.value) {
+          roomInput.value = DEFAULT_PC_ROOM_CODE;
+        }
+
+        renderQueueList();
+        startCamera();
+      }
+
+      document.getElementById("btn-mode-phone").addEventListener("click", () => {
+        initPhoneMode("");
+      });
+
+      document.getElementById("btn-switch-cam").addEventListener("click", async () => {
+        facingMode = facingMode === "environment" ? "user" : "environment";
+        await startCamera();
+      });
+
       document.getElementById("btn-phone-connect").addEventListener("click", () => {
-        const code = document.getElementById("phone-room-input").value.trim().toUpperCase();
+        const code = document.getElementById("phone-room-input").value;
         connectToPc(code);
       });
 
@@ -941,40 +1289,95 @@
             return;
           }
           recordedChunks = [];
-          const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+          const mimeType = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
             ? "video/webm;codecs=vp8,opus"
-            : "video/webm";
+            : "";
 
-          mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+          try {
+            mediaRecorder = mimeType ? new MediaRecorder(mediaStream, { mimeType }) : new MediaRecorder(mediaStream);
+          } catch (err) {
+            mediaRecorder = new MediaRecorder(mediaStream);
+          }
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              recordedChunks.push(event.data);
+            }
           };
+
           mediaRecorder.onstop = async () => {
-            const blob = new Blob(recordedChunks, { type: mimeType });
-            await enqueueOrSendVideo(blob, `rec_${Date.now()}.webm`);
+            const finalMime = mediaRecorder.mimeType || "video/webm";
+            const ext = finalMime.includes("mp4") ? ".mp4" : ".webm";
+            const blob = new Blob(recordedChunks, { type: finalMime });
+            recordedChunks = [];
+            if (blob.size > 0) {
+              await enqueueOrSendVideo(blob, `recording_${Date.now()}${ext}`);
+            }
           };
 
-          mediaRecorder.start(500);
+          mediaRecorder.start(1000);
           isRecording = true;
           recSeconds = 0;
           recTimer.textContent = "00:00";
           recBadge.classList.remove("hidden");
-          btn.innerHTML = `<span class="w-3 h-3 rounded-sm bg-white"></span> 촬영 종료 및 전송`;
-          btn.classList.replace("bg-red-600", "bg-slate-700");
+          btn.className = "flex-1 min-w-[140px] py-3.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm shadow-lg shadow-amber-600/20 transition flex items-center justify-center gap-2";
+          btn.innerHTML = `<span class="w-3 h-3 rounded-sm bg-white"></span>촬영 종료 및 전송`;
 
           recTimerInterval = setInterval(() => {
-            recSeconds++;
-            const m = String(Math.floor(recSeconds / 60)).padStart(2, "0");
-            const s = String(recSeconds % 60).padStart(2, "0");
-            recTimer.textContent = `${m}:${s}`;
+            recSeconds += 1;
+            const mins = String(Math.floor(recSeconds / 60)).padStart(2, "0");
+            const secs = String(recSeconds % 60).padStart(2, "0");
+            recTimer.textContent = `${mins}:${secs}`;
           }, 1000);
         } else {
-          mediaRecorder.stop();
           isRecording = false;
           clearInterval(recTimerInterval);
           recBadge.classList.add("hidden");
-          btn.innerHTML = `<span class="w-3 h-3 rounded-full bg-white"></span> 촬영 시작`;
-          btn.classList.replace("bg-slate-700", "bg-red-600");
+          btn.className = "flex-1 min-w-[140px] py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-2";
+          btn.innerHTML = `<span class="w-3 h-3 rounded-full bg-white"></span>촬영 시작`;
+
+          if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            try {
+              mediaRecorder.stop();
+            } catch (err) {
+              console.warn("MediaRecorder stop error:", err);
+            }
+          }
+        }
+      });
+
+      // 사진 촬영 (현재 카메라 프리뷰 프레임을 JPEG로 캡처)
+      document.getElementById("btn-capture-photo").addEventListener("click", async () => {
+        const videoEl = document.getElementById("phone-preview");
+        if (!mediaStream || !videoEl || videoEl.readyState < 2 || !videoEl.videoWidth || !videoEl.videoHeight) {
+          showToast("카메라 영상이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.", "error");
+          return;
+        }
+
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = videoEl.videoWidth;
+          canvas.height = videoEl.videoHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            showToast("사진 캡처 캔버스를 초기화할 수 없습니다.", "error");
+            return;
+          }
+          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+          const blob = await new Promise((resolve) => {
+            canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92);
+          });
+
+          if (!blob) {
+            showToast("사진 파일 생성에 실패했습니다.", "error");
+            return;
+          }
+
+          await enqueueOrSendVideo(blob, `photo_${Date.now()}.jpg`);
+        } catch (err) {
+          console.error("Photo capture error:", err);
+          showToast("사진 촬영 중 오류가 발생했습니다.", "error");
         }
       });
 
@@ -1034,7 +1437,7 @@
               <div class="text-slate-200 font-medium truncate">${item.fileName}</div>
               <div class="text-[10px] text-slate-400">${formatBytes(item.size)} · ${item.createdAt}</div>
             </div>
-            <button class="btn-del-q text-red-400 hover:text-red-300 px-2 py-1 text-[11px] font-semibold">삭제</button>
+            <button type="button" class="btn-del-q text-red-400 hover:text-red-300 px-2 py-1 text-[11px] font-semibold">삭제</button>
           `;
           row.querySelector(".btn-del-q").addEventListener("click", async () => {
             await removeFromQueueDB(item.id);
@@ -1092,13 +1495,12 @@
               progressPercent.textContent = `${pct}%`;
               progressBar.style.width = `${pct}%`;
 
-              // 이벤트 루프 양보 (UI 멈춤 방지)
               if (i % 10 === 0) await new Promise((r) => setTimeout(r, 5));
             }
 
             const ackPromise = new Promise((resolve) => {
               pendingAcks.set(sessionId, resolve);
-              setTimeout(resolve, 4000); // 타임아웃 안전장치
+              setTimeout(resolve, 4000);
             });
             phoneConn.send({ type: "end", sessionId });
             await ackPromise;
