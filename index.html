@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.4</span></h1>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.5</span></h1>
           <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
@@ -739,6 +739,7 @@
           pcFolder = folder;
           localize(folderStatus, 'folderSelected', [folder.name]);
           document.getElementById('pc-auto-save').checked = true;
+          renderPcVideos();
         } catch (err) {
           if (err.name !== 'AbortError') showToast(tr('folderError'), 'error');
         }
@@ -762,27 +763,32 @@
       }
       async function downloadRecord(v, extraCopy = false) {
         if (v.saving) return;
-        if (!extraCopy && (v.handle || v.downloadRequested)) return;
-        if (v.url && !extraCopy && pcFolder) {
-          v.saving = true;
-          try {
-            const saved = await saveToFolder(pcFolder, v.fileName, v.blob);
-            v.handle = saved.handle; v.fileName = saved.name;
-            URL.revokeObjectURL(v.url); v.url = null; v.blob = null;
-          } catch (_) { v.saveFailed = true; showToast(tr('folderError'),'error'); }
-          finally { v.saving = false; renderPcVideos(); }
-          return;
-        }
-        if (v.url) {
-          triggerDownload(v.url,v.fileName);
-          v.downloadRequested = true; renderPcVideos(); return;
-        }
+        if (!extraCopy && (v.handle || (v.downloadRequested && !pcFolder))) return;
+        v.saving = true;
+        const folder = pcFolder;
         try {
-          const file = await v.handle.getFile();
-          const url = URL.createObjectURL(file);
-          triggerDownload(url,v.fileName);
-          setTimeout(()=>URL.revokeObjectURL(url),60000);
-        } catch (_) { showToast(tr('folderError'),'error'); }
+          if (folder) {
+            const source = v.blob || (v.handle && await v.handle.getFile());
+            if (!source) throw new Error('Missing source');
+            const saved = await saveToFolder(folder, v.fileName, source);
+            if (!v.handle) {
+              v.handle = saved.handle; v.fileName = saved.name;
+              if (v.url) URL.revokeObjectURL(v.url);
+              v.url = null; v.blob = null;
+              v.downloadRequested = false;
+            }
+            v.saveFailed = false;
+            showToast(tr('folderCopySaved'), 'success');
+          } else if (v.handle) {
+            // Never silently download a disk-backed record to another folder.
+            showToast(tr('chooseFolderFirst'), 'error');
+          } else if (v.url) {
+            triggerDownload(v.url, v.fileName);
+            v.downloadRequested = true;
+          }
+        } catch (_) {
+          v.saveFailed = true; showToast(tr('folderError'), 'error');
+        } finally { v.saving = false; renderPcVideos(); }
       }
       async function previewRecord(v, card) {
         try {
@@ -1338,7 +1344,7 @@
         const btnAll = document.getElementById("btn-pc-download-all");
         const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
 
-        if (filtered.some(v => !v.handle && !v.downloadRequested)) btnAll.classList.remove("hidden");
+        if (filtered.some(v => !v.handle && (!v.downloadRequested || pcFolder))) btnAll.classList.remove("hidden");
         else btnAll.classList.add("hidden");
 
         if (filtered.length === 0) {
@@ -1363,11 +1369,11 @@
                 <div class="text-[10px] text-slate-500">${formatBytes(v.size)} · ${v.timestamp}</div>
               </div>
               <button type="button" class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
-                <span data-i18n="${v.handle || v.downloadRequested ? "extraCopy" : "save"}">${tr(v.handle || v.downloadRequested ? "extraCopy" : "save")}</span>
+                <span data-i18n="${v.handle || (v.downloadRequested && !pcFolder) ? "extraCopy" : "save"}">${tr(v.handle || (v.downloadRequested && !pcFolder) ? "extraCopy" : "save")}</span>
               </button>
             </div>
           `;
-          card.querySelector(".btn-dl").addEventListener("click", () => downloadRecord(v, Boolean(v.handle || v.downloadRequested)));
+          card.querySelector(".btn-dl").addEventListener("click", () => downloadRecord(v, Boolean(v.handle || (v.downloadRequested && !pcFolder))));
           if (!v.handle) {
             const status = document.createElement('p'); status.className = 'text-xs text-slate-400 px-3';
             localize(status, v.downloadRequested ? 'downloadRequested' : v.saveFailed ? 'saveFailed' : 'notSaved'); card.appendChild(status);
@@ -1398,7 +1404,7 @@
 
       document.getElementById("btn-pc-download-all").addEventListener("click", () => {
         const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
-        filtered.filter(v => !v.handle && !v.downloadRequested).forEach((v, idx) => {
+        filtered.filter(v => !v.handle && (!v.downloadRequested || pcFolder)).forEach((v, idx) => {
           setTimeout(() => downloadRecord(v), idx * 300);
         });
       });
@@ -1700,7 +1706,10 @@
           try {
             savedName = localStorage.getItem("snap2pc_device_name") || "";
           } catch (e) {}
-          nameInput.value = savedName || `Phone-${Math.floor(100 + Math.random() * 900)}`;
+          // Stable default derived from the persistent client identity.
+          const identity = getTransferClientId();
+          nameInput.value = savedName || `Phone-${identity.replace(/-/g, '').slice(0, 8)}`;
+          try { localStorage.setItem("snap2pc_device_name", nameInput.value); } catch (e) {}
 
           nameInput.addEventListener("change", () => {
             const trimmed = nameInput.value.trim() || "Phone";
@@ -2229,7 +2238,7 @@
           receivedMediaTitle: "수신된 미디어 목록",
           receivedMediaDesc: "기기별로 필터링하거나 일괄 다운로드할 수 있습니다.",
           downloadAllBtn: "미저장 파일 일괄 저장",
-          extraCopy: "추가 다운로드", downloadRequested: "다운로드 요청됨 (저장 완료 미확인)", notSaved: "미저장", saveFailed: "저장 실패",
+          extraCopy: "추가 저장", folderCopySaved: "지정 폴더에 저장했습니다.", chooseFolderFirst: "저장 폴더를 먼저 선택하세요.", downloadRequested: "다운로드 요청됨 (저장 완료 미확인)", notSaved: "미저장", saveFailed: "저장 실패",
           laptopConnLabel: "노트북 연결",
           deviceNameLabel: "내 기기 이름 (구분용)",
           roomCodeLabel: "노트북 연결 코드",
@@ -2382,7 +2391,7 @@
           receivedMediaTitle: "Received Media",
           receivedMediaDesc: "Filter by device or download all files at once.",
           downloadAllBtn: "Save unsaved files",
-          extraCopy: "Download copy", downloadRequested: "Download requested (not verified)", notSaved: "Not saved", saveFailed: "Save failed",
+          extraCopy: "Save copy", folderCopySaved: "Saved to selected folder.", chooseFolderFirst: "Choose a save folder first.", downloadRequested: "Download requested (not verified)", notSaved: "Not saved", saveFailed: "Save failed",
           laptopConnLabel: "Laptop Connection",
           deviceNameLabel: "My Device Name",
           roomCodeLabel: "Laptop Code",
