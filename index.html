@@ -171,6 +171,7 @@
 
           <div id="pc-qrcode" class="bg-white p-3 rounded-xl mb-4 shadow-inner"></div>
 
+          <p id="pc-turn-qr-notice" class="hidden text-[11px] text-amber-300 mb-3" data-i18n="turnQrNotice"></p>
           <!-- QR 접속용 주소(호스트/URL) 지정 -->
           <div class="w-full text-left bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-3">
             <div class="flex items-center justify-between mb-1">
@@ -387,7 +388,7 @@
         </label>
       </div>
       <p class="text-xs text-slate-400 leading-relaxed mb-4" data-i18n="turnDesc">
-        모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 입력한 정보는 내 기기 브라우저에만 저장됩니다.
+        모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 설정은 내 브라우저에 저장되며, 활성화하면 QR을 통해 휴대폰에 인증 정보가 전달됩니다.
       </p>
 
       <div class="space-y-3 mb-5">
@@ -544,9 +545,9 @@
         }
       }
 
-      function getPeerConfig() {
+      function getPeerConfig(useSession = true) {
         const iceServers = [...DEFAULT_ICE_SERVERS];
-        const cfg = sessionTurnConfig || getSavedTurnConfig();
+        const cfg = (useSession && sessionTurnConfig) || getSavedTurnConfig();
         if (cfg.enabled && cfg.url) {
           const urls = cfg.url
             .split(",")
@@ -802,34 +803,54 @@
         }
       }
 
+      function buildPcQrUrl(baseUrl, roomCode, cfg) {
+        const parsed = new URL(baseUrl);
+        if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('Invalid URL');
+        parsed.searchParams.set('room', roomCode);
+        parsed.searchParams.delete('turn');
+        const fragment = new URLSearchParams(parsed.hash.slice(1));
+        fragment.delete('turn');
+        if (cfg.enabled && cfg.url) {
+          const token = encodeTurnParam(cfg);
+          if (!token) throw new Error('TURN encoding failed');
+          fragment.set('turn', token);
+        }
+        parsed.hash = fragment.toString();
+        return parsed.toString();
+      }
+
       function renderPcQrCode(roomCode) {
         const qrEl = document.getElementById("pc-qrcode");
         const inputEl = document.getElementById("pc-qr-base-url");
         const warnEl = document.getElementById("pc-qr-url-warning");
         if (!qrEl || !inputEl || !roomCode) return;
 
-        let baseUrl = (inputEl.value || "").trim() || getDefaultPcBaseUrl();
+        const cfg = getSavedTurnConfig();
+        const withTurn = Boolean(cfg.enabled && cfg.url);
+        const notice = document.getElementById('pc-turn-qr-notice');
+        qrEl.innerHTML = '';
+        notice.classList.add('hidden');
+        let baseUrl;
         try {
-          const parsed = new URL(baseUrl);
-          parsed.searchParams.set("room", roomCode);
-          parsed.searchParams.delete("turn");
-          baseUrl = parsed.toString();
-        } catch (e) {
-          const sep = baseUrl.includes("?") ? "&" : "?";
-          baseUrl = `${baseUrl}${sep}room=${encodeURIComponent(roomCode)}`;
-        }
-
-        qrEl.innerHTML = "";
-        if (typeof QRCode === "function") {
+          baseUrl = buildPcQrUrl((inputEl.value || '').trim() || getDefaultPcBaseUrl(), roomCode, cfg);
+          if (typeof QRCode !== 'function') throw new Error('QR library unavailable');
+          const size = withTurn ? Math.min(256, Math.max(150, qrEl.parentElement.clientWidth - 48)) : 150;
           new QRCode(qrEl, {
-            text: baseUrl,
-            width: 150,
-            height: 150,
-            colorDark: "#0f172a",
-            colorLight: "#ffffff"
+            text: baseUrl, width: size, height: size,
+            colorDark: '#0f172a', colorLight: '#ffffff',
+            correctLevel: withTurn ? QRCode.CorrectLevel.M : QRCode.CorrectLevel.H
           });
-        } else {
-          qrEl.innerHTML = `<p class="text-[11px] text-slate-700 break-all max-w-[150px]">${baseUrl}</p>`;
+          if (withTurn) {
+            localize(notice, 'turnQrNotice');
+            notice.classList.remove('hidden');
+          }
+        } catch (e) {
+          qrEl.innerHTML = '';
+          const msg = document.createElement('p');
+          msg.className = 'text-xs text-red-700 max-w-[220px]';
+          localize(msg, 'turnQrError');
+          qrEl.appendChild(msg);
+          return;
         }
 
         try {
@@ -915,7 +936,7 @@
         }
 
         try {
-          pcPeer = new Peer(PEER_PREFIX + roomCode, getPeerConfig());
+          pcPeer = new Peer(PEER_PREFIX + roomCode, getPeerConfig(false));
         } catch (err) {
           console.warn("Peer init fallback:", err);
           localize(statusBadge, "relayWait");
@@ -1761,7 +1782,7 @@
       document.getElementById("btn-clear-turn").addEventListener("click", () => {
         try {
           localStorage.removeItem(TURN_STORAGE_KEY);
-        } catch (e) {}
+        } catch (e) { showToast(tr('turnStorageError'), 'error'); return; }
         document.getElementById("turn-enabled").checked = false;
         document.getElementById("turn-url").value = "";
         document.getElementById("turn-username").value = "";
@@ -1769,6 +1790,7 @@
         updateTurnStatusIndicator();
         if (currentPcRoomCode) {
           renderPcQrCode(currentPcRoomCode);
+          if (pcPeer && !pcPeer.destroyed) bindPcPeer(currentPcRoomCode);
         }
         showToast(I18N[currentLang].turnResetToast, "info");
       });
@@ -1786,7 +1808,7 @@
 
         try {
           localStorage.setItem(TURN_STORAGE_KEY, JSON.stringify({ enabled, url, username, credential }));
-        } catch (e) {}
+        } catch (e) { showToast(tr('turnStorageError'), 'error'); return; }
 
         updateTurnStatusIndicator();
         turnModal.classList.add("hidden");
@@ -1805,21 +1827,36 @@
       });
 
       // URL 파라미터(?room=XXXXX&turn=...)로 접속 시 자동으로 휴대폰 모드 열기
-      const urlParams = new URLSearchParams(window.location.search);
-      const turnParam = urlParams.get("turn");
-      if (turnParam) {
-        const decodedTurn = decodeTurnParam(turnParam);
-        if (decodedTurn) {
+      const launchUrl = new URL(window.location.href);
+      const launchFragment = new URLSearchParams(launchUrl.hash.slice(1));
+      const roomParam = launchUrl.searchParams.get('room');
+      const turnParam = launchFragment.get('turn') || launchUrl.searchParams.get('turn');
+      let invalidTurnParam = false;
+      if (launchFragment.has('turn') || launchUrl.searchParams.has('turn')) {
+        const decodedTurn = turnParam && decodeTurnParam(turnParam);
+        if (roomParam && decodedTurn && decodedTurn.url) {
           sessionTurnConfig = decodedTurn;
+        } else {
+          invalidTurnParam = true;
         }
+        launchFragment.delete('turn');
+        launchUrl.searchParams.delete('turn');
+        launchUrl.hash = launchFragment.toString();
+        try { history.replaceState(history.state, '', launchUrl.toString()); } catch (e) {}
       }
-      const roomParam = urlParams.get("room");
+      // QR without TURN must not inherit a previously saved TURN configuration.
+      if (roomParam && !sessionTurnConfig) sessionTurnConfig = { enabled: false, url: '' };
 
       // =========================================================
       // 6. 다국어(한글/영어) 토글
       // =========================================================
       const I18N = {
         ko: {
+          turnQrNotice: "TURN 인증 정보가 QR에 포함됩니다. 신뢰하는 사람에게만 공유하고 단기 인증 정보를 사용하세요. 외부망에서는 공개 HTTPS 주소를 사용하세요.",
+          turnQrError: "QR 생성 실패: 주소 또는 인증 정보 길이를 확인하세요.",
+          turnInvalid: "TURN QR 정보가 올바르지 않습니다. PC에서 새 QR을 스캔하세요.",
+          turnAutoApplied: "QR의 TURN 설정을 적용하여 연결을 시도합니다.",
+          turnStorageError: "TURN 설정을 저장하거나 초기화하지 못했습니다.",
           ready: "준비 중...",
           applyCode: "적용",
           randomCode: "랜덤",
@@ -1901,7 +1938,7 @@
           pwaAddHome: "홈 화면에 추가",
           pwaOk: "확인",
           turnTitle: "외부망(TURN) 설정",
-          turnDesc: "모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 입력한 정보는 내 기기 브라우저에만 저장됩니다.",
+          turnDesc: "모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 설정은 내 브라우저에 저장되며, 활성화하면 QR을 통해 휴대폰에 인증 정보가 전달됩니다.",
           turnUrlLabel: "TURN 서버 주소 (URL, 여러 개는 쉼표로 구분)",
           turnUserLabel: "사용자 이름 (Username)",
           turnCredentialLabel: "비밀번호 (Credential)",
@@ -1953,6 +1990,11 @@
           phoneStatusDisconnected: "미연결 (오프라인 저장 모드)"
         },
         en: {
+          turnQrNotice: "This QR contains TURN credentials. Share only with trusted people and use short-lived credentials. Use a public HTTPS URL for external access.",
+          turnQrError: "QR generation failed. Check the URL or credential length.",
+          turnInvalid: "Invalid TURN QR information. Scan a new QR from the PC.",
+          turnAutoApplied: "TURN settings from the QR applied. Connecting…",
+          turnStorageError: "Could not save or reset TURN settings.",
           ready: "Preparing...",
           applyCode: "Apply",
           randomCode: "Random",
@@ -2034,7 +2076,7 @@
           pwaAddHome: "Add to Home Screen",
           pwaOk: "OK",
           turnTitle: "External Network (TURN) Settings",
-          turnDesc: "Leave this off when devices share a Wi-Fi network. Enable it when connecting from an external network (LTE/5G). Your settings are stored in your device browser.",
+          turnDesc: "Leave this off when devices share a Wi-Fi network. Enable it when connecting from an external network (LTE/5G). Settings are stored in your browser. When enabled, credentials are shared with phones through the QR code.",
           turnUrlLabel: "TURN server URLs (comma-separated)",
           turnUserLabel: "Username",
           turnCredentialLabel: "Password (Credential)",
@@ -2132,8 +2174,10 @@
       });
 
       applyLanguage(currentLang);
-      if (roomParam) {
+      if (invalidTurnParam) showToast(tr('turnInvalid'), 'error');
+      if (roomParam && !invalidTurnParam) {
         initPhoneMode(roomParam);
+        if (sessionTurnConfig.enabled) showToast(tr('turnAutoApplied'), 'info');
       }
     })();
   </script>
