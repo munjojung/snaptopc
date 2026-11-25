@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SnapToPC - 폰-노트북 영상 전송기</title>
+  <title data-i18n="appTitle">SnapToPC - 폰-노트북 영상 전송기</title>
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -131,7 +131,7 @@
         <div class="glass-card rounded-2xl p-5 flex flex-col items-center text-center">
           <div class="w-full flex items-center justify-between mb-3">
             <span data-i18n="connStatus" class="text-xs font-semibold text-slate-400">연결 상태</span>
-            <span id="pc-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300">
+            <span id="pc-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300" data-i18n="ready">
               준비 중...
             </span>
           </div>
@@ -142,10 +142,10 @@
               Z9PZT
             </div>
             <div class="flex items-center gap-1.5">
-              <button id="btn-edit-pc-code" type="button" data-i18n="editCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700 transition" title="연결 코드 변경">
+              <button id="btn-edit-pc-code" type="button" data-i18n="editCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700 transition" data-i18n-title="editTitle" title="연결 코드 변경">
                 코드 변경
               </button>
-              <button id="btn-reset-pc-code" type="button" data-i18n="resetCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-indigo-300 border border-slate-700 transition" title="기본 코드(Z9PZT)로 복원">
+              <button id="btn-reset-pc-code" type="button" data-i18n="resetCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-indigo-300 border border-slate-700 transition" data-i18n-title="resetTitle" title="기본 코드(Z9PZT)로 복원">
                 Z9PZT 복원
               </button>
             </div>
@@ -157,13 +157,13 @@
                 id="pc-custom-code-input"
                 type="text"
                 maxlength="8"
-                placeholder="예: Z9PZT"
+                data-i18n-placeholder="codeExample" placeholder="예: Z9PZT"
                 class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white uppercase tracking-widest font-bold focus:outline-none focus:border-indigo-500"
               />
-              <button id="btn-save-pc-code" type="button" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold whitespace-nowrap transition">
+              <button id="btn-save-pc-code" type="button" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold whitespace-nowrap transition" data-i18n="applyCode">
                 적용
               </button>
-              <button id="btn-random-pc-code" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold whitespace-nowrap transition">
+              <button id="btn-random-pc-code" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold whitespace-nowrap transition" data-i18n="randomCode">
                 랜덤
               </button>
             </div>
@@ -174,12 +174,12 @@
           <!-- QR 접속용 주소(호스트/URL) 지정 -->
           <div class="w-full text-left bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-3">
             <div class="flex items-center justify-between mb-1">
-              <label for="pc-qr-base-url" class="text-[11px] font-semibold text-slate-300">QR 접속용 주소 (호스트/URL)</label>
+              <label for="pc-qr-base-url" class="text-[11px] font-semibold text-slate-300" data-i18n="qrAddress">QR 접속용 주소 (호스트/URL)</label>
               <div class="flex items-center gap-2">
-                <button id="btn-detect-local-ip" type="button" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium">
+                <button id="btn-detect-local-ip" type="button" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium" data-i18n="detectIP">
                   IP 자동 감지
                 </button>
-                <button id="btn-reset-qr-url" type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium">
+                <button id="btn-reset-qr-url" type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium" data-i18n="resetQR">
                   현재 주소로 초기화
                 </button>
               </div>
@@ -187,11 +187,11 @@
             <input
               id="pc-qr-base-url"
               type="text"
-              placeholder="예: https://munjojung.github.io/snaptopc/"
+              data-i18n-placeholder="urlExample" placeholder="예: https://munjojung.github.io/snaptopc/"
               class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[11px] text-slate-100 focus:outline-none focus:border-indigo-500"
             />
             <p id="pc-detected-ip-info" class="hidden text-[10px] text-cyan-400 mt-1 leading-snug"></p>
-            <p id="pc-qr-url-warning" class="hidden text-[10px] text-amber-400 mt-1 leading-snug">
+            <p id="pc-qr-url-warning" class="hidden text-[10px] text-amber-400 mt-1 leading-snug" data-i18n="qrWarning">
               현재 주소가 127.0.0.1/localhost입니다. 휴대폰 사파리 접속을 위해 노트북 IP 또는 HTTPS 주소를 입력하세요.
             </p>
           </div>
@@ -208,10 +208,10 @@
           <div class="w-full text-left mt-2">
             <div class="flex items-center justify-between mb-2">
               <span data-i18n="connectedDevices" class="text-xs font-semibold text-slate-300">연결된 기기</span>
-              <span id="pc-device-count" class="text-xs text-indigo-400 font-bold">0대</span>
+              <span id="pc-device-count" class="text-xs text-indigo-400 font-bold" data-i18n="zeroDevices">0대</span>
             </div>
             <div id="pc-connected-devices" class="space-y-1.5 max-h-36 overflow-y-auto text-xs">
-              <p class="text-slate-500 text-center py-2">아직 연결된 휴대폰이 없습니다.</p>
+              <p class="text-slate-500 text-center py-2" data-i18n="noDevices">아직 연결된 휴대폰이 없습니다.</p>
             </div>
           </div>
         </div>
@@ -235,12 +235,12 @@
 
             <!-- 기기 필터 탭 -->
             <div id="pc-filter-tabs" class="flex flex-wrap gap-1.5 mb-4">
-              <button type="button" data-filter="ALL" class="filter-tab px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white">전체</button>
+              <button type="button" data-filter="ALL" class="filter-tab px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white" data-i18n="all">전체</button>
             </div>
 
             <!-- 미디어 리스트 -->
             <div id="pc-video-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 content-start">
-              <div class="col-span-full text-center py-12 text-slate-500 text-sm">
+              <div class="col-span-full text-center py-12 text-slate-500 text-sm" data-i18n="emptyMedia">
                 휴대폰에서 영상이나 사진을 촬영해 전송하면 이곳에 표시됩니다.
               </div>
             </div>
@@ -263,7 +263,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
           <div>
             <label data-i18n="deviceNameLabel" class="block text-[11px] text-slate-400 mb-1">내 기기 이름 (구분용)</label>
-            <input id="phone-device-name" type="text" maxlength="16" placeholder="예: 철수-폰" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-500" />
+            <input id="phone-device-name" type="text" maxlength="16" data-i18n-placeholder="nameExample" placeholder="예: 철수-폰" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-500" />
           </div>
           <div>
             <label data-i18n="roomCodeLabel" class="block text-[11px] text-slate-400 mb-1">노트북 연결 코드</label>
@@ -289,7 +289,7 @@
           </div>
 
           <!-- 카메라 전환 버튼 -->
-          <button id="btn-switch-cam" type="button" class="absolute top-3 right-3 p-2.5 rounded-full bg-slate-900/75 hover:bg-slate-800 text-white border border-white/15 backdrop-blur transition" title="전/후면 카메라 전환">
+          <button id="btn-switch-cam" type="button" class="absolute top-3 right-3 p-2.5 rounded-full bg-slate-900/75 hover:bg-slate-800 text-white border border-white/15 backdrop-blur transition" data-i18n-title="camTitle" title="전/후면 카메라 전환">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
@@ -330,7 +330,7 @@
         <!-- 현재 전송 진행률 -->
         <div id="phone-upload-progress-box" class="hidden bg-slate-900/80 p-3 rounded-xl border border-slate-800">
           <div class="flex justify-between text-xs mb-1.5">
-            <span id="phone-upload-label" class="text-cyan-300 font-medium">전송 중...</span>
+            <span id="phone-upload-label" class="text-cyan-300 font-medium" data-i18n="uploading">전송 중...</span>
             <span id="phone-upload-percent" class="text-white font-bold">0%</span>
           </div>
           <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -351,7 +351,7 @@
           </button>
         </div>
         <div id="phone-queue-list" class="space-y-2 text-xs">
-          <p class="text-slate-500 text-center py-4">대기 중인 영상이 없습니다.</p>
+          <p class="text-slate-500 text-center py-4" data-i18n="emptyQueue">대기 중인 영상이 없습니다.</p>
         </div>
       </div>
     </section>
@@ -429,7 +429,7 @@
       // =========================================================
       try {
         const manifest = {
-          name: "SnapToPC - 폰-노트북 영상 전송기",
+          name: "SnapToPC",
           short_name: "SnapToPC",
           start_url: ".",
           display: "standalone",
@@ -774,7 +774,7 @@
         if (ip) {
           const candidateUrl = buildUrlWithDetectedIp(ip);
           if (infoEl) {
-            infoEl.textContent = `감지된 로컬 IP: ${ip}`;
+            localize(infoEl, "ipFound", [ip]);
             infoEl.classList.remove("hidden");
           }
           if (forceApply || (!userManuallyEditedQrUrl && isLocalhostUrl(inputEl.value))) {
@@ -786,7 +786,7 @@
           return ip;
         } else {
           if (infoEl) {
-            infoEl.textContent = "브라우저 정책으로 로컬 IP가 숨겨졌을 수 있습니다. 직접 주소를 입력해 주세요.";
+            localize(infoEl, "ipHidden");
             infoEl.classList.remove("hidden");
           }
           return null;
@@ -848,7 +848,7 @@
       function applyPcRoomCode(rawCode, options = {}) {
         const normalized = normalizeRoomCode(rawCode);
         if (!normalized) {
-          showToast("영문 또는 숫자로 된 연결 코드를 입력해 주세요.", "error");
+          showToast(tr("invalidCode"), "error");
           return;
         }
 
@@ -895,7 +895,7 @@
 
       function bindPcPeer(roomCode) {
         const statusBadge = document.getElementById("pc-status-badge");
-        statusBadge.textContent = "연결 중...";
+        localize(statusBadge, "phoneStatusConnecting");
         statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300";
 
         if (pcPeer) {
@@ -908,9 +908,9 @@
         renderConnectedDevices();
 
         if (typeof Peer !== "function") {
-          statusBadge.textContent = "PeerJS 로드 실패";
+          localize(statusBadge, "peerFail");
           statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
-          showToast("네트워크 연결을 확인해 주세요. (PeerJS 스크립트 로드 실패)", "error");
+          showToast(tr("peerNetwork"), "error");
           return;
         }
 
@@ -918,33 +918,33 @@
           pcPeer = new Peer(PEER_PREFIX + roomCode, getPeerConfig());
         } catch (err) {
           console.warn("Peer init fallback:", err);
-          statusBadge.textContent = "로컬 중계 대기 중";
+          localize(statusBadge, "relayWait");
           statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/20 text-cyan-300";
           return;
         }
 
         pcPeer.on("open", () => {
-          statusBadge.textContent = "수신 대기 중";
+          localize(statusBadge, "receiveWait");
           statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300";
-          showToast(`연결 코드 ${roomCode}가 준비되었습니다.`, "success");
+          showToast(tr("codeReady" , [roomCode]), "success");
         });
 
         pcPeer.on("error", (err) => {
           console.error("PC Peer error:", err);
           const isTaken = err && err.type === "unavailable-id";
-          statusBadge.textContent = isTaken ? "코드 사용 중" : "연결 오류";
+          localize(statusBadge, isTaken ? "codeTaken" : "connError");
           statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
           showToast(
             isTaken
-              ? `코드 ${roomCode}가 이미 사용 중입니다. 잠시 후 다시 시도하거나 코드를 변경해 주세요.`
-              : "시그널링 서버 연결에 실패했습니다.",
+              ? tr("codeTakenMsg" , [roomCode])
+              : tr("signalFail"),
             "error"
           );
         });
 
         pcPeer.on("connection", (conn) => {
           conn.on("open", () => {
-            connectedSenders.set(conn.peer, { conn, deviceName: "이름 없는 기기" });
+            connectedSenders.set(conn.peer, { conn, deviceName: "", unnamed: true });
             renderConnectedDevices();
           });
 
@@ -967,9 +967,9 @@
         const countEl = document.getElementById("pc-device-count");
         if (!listEl || !countEl) return;
 
-        countEl.textContent = `${connectedSenders.size}대`;
+        localize(countEl, "deviceCount", [connectedSenders.size]);
         if (connectedSenders.size === 0) {
-          listEl.innerHTML = `<p class="text-slate-500 text-center py-2">아직 연결된 휴대폰이 없습니다.</p>`;
+          listEl.innerHTML = `<p class="text-slate-500 text-center py-2"><span data-i18n="noDevices">${tr("noDevices")}</span></p>`;
           return;
         }
 
@@ -978,8 +978,8 @@
           const row = document.createElement("div");
           row.className = "flex items-center justify-between bg-slate-900/70 px-3 py-2 rounded-lg border border-slate-800";
           row.innerHTML = `
-            <span class="text-slate-200 font-medium truncate">${sender.deviceName}</span>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold shrink-0">연결됨</span>
+            <span class="text-slate-200 font-medium truncate">${sender.unnamed && !sender.deviceName ? tr("unnamed") : sender.deviceName}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold shrink-0"><span data-i18n="connected">${tr("connected")}</span></span>
           `;
           listEl.appendChild(row);
         });
@@ -1003,17 +1003,17 @@
         if (!data || typeof data !== "object") return;
 
         if (data.type === "hello") {
-          const devName = String(data.deviceName || "휴대폰").trim() || "휴대폰";
+          const devName = String(data.deviceName || "Phone").trim() || "Phone";
           const current = connectedSenders.get(conn.peer) || { conn };
           connectedSenders.set(conn.peer, { ...current, deviceName: devName });
           renderConnectedDevices();
-          showToast(`${devName} 기기가 연결되었습니다.`, "info");
+          showToast(tr("deviceConnected" , [devName]), "info");
           return;
         }
 
         if (data.type === "meta") {
           const sender = connectedSenders.get(conn.peer);
-          const deviceName = String(data.deviceName || (sender && sender.deviceName) || "휴대폰").trim();
+          const deviceName = String(data.deviceName || (sender && sender.deviceName) || "Phone").trim();
           if (sender) {
             connectedSenders.set(conn.peer, { ...sender, deviceName });
             renderConnectedDevices();
@@ -1084,7 +1084,7 @@
             conn.send({ type: "ack", sessionId: data.sessionId });
           } catch (e) {}
 
-          showToast(`${sess.deviceName}에서 ${fileName} 수신 완료!`, "success");
+          showToast(tr("received" , [sess.deviceName, fileName]), "success");
         }
       }
 
@@ -1103,7 +1103,7 @@
           card.className = "glass-card rounded-xl p-3 border border-indigo-500/30";
           card.innerHTML = `
             <div class="flex justify-between text-xs mb-1">
-              <span class="text-indigo-300 font-semibold">${sess.deviceName} 수신 중...</span>
+              <span class="text-indigo-300 font-semibold" data-i18n="receiving" data-i18n-args="${encodeURIComponent(JSON.stringify([sess.deviceName]))}">${tr("receiving", [sess.deviceName])}</span>
               <span class="text-white font-bold">${pct}%</span>
             </div>
             <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -1122,7 +1122,7 @@
         const allBtn = document.createElement("button");
         allBtn.type = "button";
         allBtn.className = `px-3 py-1 rounded-lg text-xs font-semibold transition ${activeFilter === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`;
-        allBtn.textContent = `전체 (${receivedVideos.length})`;
+        localize(allBtn, "allCount", [receivedVideos.length]);
         allBtn.onclick = () => { activeFilter = "ALL"; renderFilterTabs(); renderPcVideos(); };
         tabsEl.appendChild(allBtn);
 
@@ -1146,7 +1146,7 @@
         else btnAll.classList.add("hidden");
 
         if (filtered.length === 0) {
-          listEl.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500 text-sm">표시할 영상이 없습니다.</div>`;
+          listEl.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500 text-sm"><span data-i18n="noMedia">${tr("noMedia")}</span></div>`;
           return;
         }
 
@@ -1167,7 +1167,7 @@
                 <div class="text-[10px] text-slate-500">${formatBytes(v.size)} · ${v.timestamp}</div>
               </div>
               <button type="button" class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
-                저장
+                <span data-i18n="save">${tr("save")}</span>
               </button>
             </div>
           `;
@@ -1223,7 +1223,7 @@
 
       document.getElementById("btn-reset-pc-code").addEventListener("click", () => {
         applyPcRoomCode(DEFAULT_PC_ROOM_CODE, { hideEditor: true });
-        showToast(`기본 연결 코드(${DEFAULT_PC_ROOM_CODE})로 복원했습니다.`, "info");
+        showToast(tr("codeReset" , [DEFAULT_PC_ROOM_CODE]), "info");
       });
 
       document.getElementById("pc-qr-base-url").addEventListener("input", () => {
@@ -1237,9 +1237,9 @@
         const ip = await applyAutoDetectedQrUrl(true);
         if (ip) {
           userManuallyEditedQrUrl = true;
-          showToast(`로컬 IP (${ip})로 QR 주소가 갱신되었습니다.`, "success");
+          showToast(tr("ipUpdated" , [ip]), "success");
         } else {
-          showToast("로컬 IP를 자동 감지하지 못했습니다. 직접 입력해 주세요.", "info");
+          showToast(tr("ipFailed"), "info");
         }
       });
 
@@ -1253,7 +1253,7 @@
         if (currentPcRoomCode) {
           renderPcQrCode(currentPcRoomCode);
         }
-        showToast("QR 접속용 주소가 현재 주소로 초기화되었습니다.", "info");
+        showToast(tr("qrReset"), "info");
       });
 
       // =========================================================
@@ -1296,7 +1296,7 @@
 
       async function startCamera() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          showToast("이 환경에서는 카메라 API를 사용할 수 없습니다. (갤러리 선택 이용 가능)", "info");
+          showToast(tr("noCameraAPI"), "info");
           return;
         }
         if (mediaStream) {
@@ -1310,19 +1310,19 @@
           document.getElementById("phone-preview").srcObject = mediaStream;
         } catch (err) {
           console.error("Camera error:", err);
-          showToast("카메라 권한을 허용해 주세요. (갤러리 선택은 계속 사용 가능)", "error");
+          showToast(tr("cameraPermission"), "error");
         }
       }
 
       function connectToPc(rawCode) {
         const code = normalizeRoomCode(rawCode);
         if (!code) {
-          showToast("연결 코드를 입력해 주세요.", "error");
+          showToast(tr("enterCode"), "error");
           return;
         }
 
         if (typeof Peer !== "function") {
-          showToast("PeerJS 라이브러리를 불러오지 못했습니다.", "error");
+          showToast(tr("peerMissing"), "error");
           return;
         }
 
@@ -1347,14 +1347,14 @@
         } catch (err) {
           console.warn("Phone Peer init error:", err);
           setPhoneStatus("disconnected");
-          showToast("연결을 초기화할 수 없습니다.", "error");
+          showToast(tr("initFailed"), "error");
           return;
         }
 
         phoneConnectTimeout = setTimeout(() => {
           if (!isPhoneConnected) {
             setPhoneStatus("disconnected");
-            showToast("연결 시간이 초과되었습니다. 코드를 확인하거나 새로고침해 주세요.", "error");
+            showToast(tr("timeout"), "error");
           }
         }, 12000);
 
@@ -1368,11 +1368,11 @@
               phoneConnectTimeout = null;
             }
             setPhoneStatus("connected");
-            const devName = document.getElementById("phone-device-name").value.trim() || "휴대폰";
+            const devName = document.getElementById("phone-device-name").value.trim() || "Phone";
             try {
               phoneConn.send({ type: "hello", deviceName: devName });
             } catch (e) {}
-            showToast(`노트북(${code})과 연결되었습니다.`, "success");
+            showToast(tr("laptopConnected" , [code]), "success");
             flushQueue();
           });
 
@@ -1392,7 +1392,7 @@
               phoneConnectTimeout = null;
             }
             setPhoneStatus("disconnected");
-            showToast("노트북과 연결이 끊어졌습니다.", "info");
+            showToast(tr("laptopDisconnected"), "info");
           });
 
           phoneConn.on("error", () => {
@@ -1401,7 +1401,7 @@
               phoneConnectTimeout = null;
             }
             setPhoneStatus("disconnected");
-            showToast("노트북 연결에 실패했습니다.", "error");
+            showToast(tr("laptopFailed"), "error");
           });
         });
 
@@ -1411,7 +1411,7 @@
             phoneConnectTimeout = null;
           }
           setPhoneStatus("disconnected");
-          showToast("연결할 수 없습니다. 코드 및 네트워크를 확인하세요.", "error");
+          showToast(tr("connectFailed"), "error");
         });
       }
 
@@ -1427,10 +1427,10 @@
           try {
             savedName = localStorage.getItem("snap2pc_device_name") || "";
           } catch (e) {}
-          nameInput.value = savedName || `휴대폰-${Math.floor(100 + Math.random() * 900)}`;
+          nameInput.value = savedName || `Phone-${Math.floor(100 + Math.random() * 900)}`;
 
           nameInput.addEventListener("change", () => {
-            const trimmed = nameInput.value.trim() || "휴대폰";
+            const trimmed = nameInput.value.trim() || "Phone";
             nameInput.value = trimmed;
             try {
               localStorage.setItem("snap2pc_device_name", trimmed);
@@ -1477,7 +1477,7 @@
 
         if (!isRecording) {
           if (!mediaStream) {
-            showToast("카메라가 준비되지 않았습니다.", "error");
+            showToast(tr("cameraNotReady"), "error");
             return;
           }
           recordedChunks = [];
@@ -1513,7 +1513,7 @@
           recTimer.textContent = "00:00";
           recBadge.classList.remove("hidden");
           btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-amber-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap";
-          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-sm bg-white shrink-0"></span>촬영 종료 및 전송`;
+          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-sm bg-white shrink-0"></span><span data-i18n="stopRec">${tr("stopRec")}</span>`;
 
           recTimerInterval = setInterval(() => {
             recSeconds += 1;
@@ -1526,7 +1526,7 @@
           clearInterval(recTimerInterval);
           recBadge.classList.add("hidden");
           btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap";
-          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span>촬영 시작`;
+          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span><span data-i18n="startRecBtn">${tr("startRecBtn")}</span>`;
 
           if (mediaRecorder && mediaRecorder.state !== "inactive") {
             try {
@@ -1542,7 +1542,7 @@
       document.getElementById("btn-capture-photo").addEventListener("click", async () => {
         const videoEl = document.getElementById("phone-preview");
         if (!mediaStream || !videoEl || videoEl.readyState < 2 || !videoEl.videoWidth || !videoEl.videoHeight) {
-          showToast("카메라 영상이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.", "error");
+          showToast(tr("cameraRetry"), "error");
           return;
         }
 
@@ -1552,7 +1552,7 @@
           canvas.height = videoEl.videoHeight;
           const ctx = canvas.getContext("2d");
           if (!ctx) {
-            showToast("사진 캡처 캔버스를 초기화할 수 없습니다.", "error");
+            showToast(tr("canvasFail"), "error");
             return;
           }
           ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
@@ -1562,14 +1562,14 @@
           });
 
           if (!blob) {
-            showToast("사진 파일 생성에 실패했습니다.", "error");
+            showToast(tr("photoFail"), "error");
             return;
           }
 
           await enqueueOrSendVideo(blob, `photo_${Date.now()}.jpg`);
         } catch (err) {
           console.error("Photo capture error:", err);
-          showToast("사진 촬영 중 오류가 발생했습니다.", "error");
+          showToast(tr("photoError"), "error");
         }
       });
 
@@ -1609,7 +1609,7 @@
         if (isPhoneConnected && phoneConn) {
           flushQueue();
         } else {
-          showToast("미연결 상태입니다. 대기열에 안전하게 저장되었습니다.", "info");
+          showToast(tr("queued"), "info");
         }
       }
 
@@ -1617,7 +1617,7 @@
         const listEl = document.getElementById("phone-queue-list");
         const items = await getAllQueueDB();
         if (items.length === 0) {
-          listEl.innerHTML = `<p class="text-slate-500 text-center py-4">대기 중인 영상이 없습니다.</p>`;
+          listEl.innerHTML = `<p class="text-slate-500 text-center py-4"><span data-i18n="emptyQueue">${tr("emptyQueue")}</span></p>`;
           return;
         }
         listEl.innerHTML = "";
@@ -1629,7 +1629,7 @@
               <div class="text-slate-200 font-medium truncate">${item.fileName}</div>
               <div class="text-[10px] text-slate-400">${formatBytes(item.size)} · ${item.createdAt}</div>
             </div>
-            <button type="button" class="btn-del-q text-red-400 hover:text-red-300 px-2 py-1 text-[11px] font-semibold">삭제</button>
+            <button type="button" class="btn-del-q text-red-400 hover:text-red-300 px-2 py-1 text-[11px] font-semibold"><span data-i18n="delete">${tr("delete")}</span></button>
           `;
           row.querySelector(".btn-del-q").addEventListener("click", async () => {
             await removeFromQueueDB(item.id);
@@ -1654,10 +1654,10 @@
             if (!isPhoneConnected) break;
 
             progressBox.classList.remove("hidden");
-            progressLabel.textContent = `${item.fileName} 전송 중...`;
+            localize(progressLabel, "sending", [item.fileName]);
 
             const sessionId = item.id;
-            const devName = document.getElementById("phone-device-name").value.trim() || "휴대폰";
+            const devName = document.getElementById("phone-device-name").value.trim() || "Phone";
             const totalChunks = Math.max(1, Math.ceil(item.blob.size / CHUNK_SIZE));
 
             phoneConn.send({
@@ -1699,7 +1699,7 @@
 
             await removeFromQueueDB(item.id);
             await renderQueueList();
-            showToast(`${item.fileName} 전송 완료!`, "success");
+            showToast(tr("sent" , [item.fileName]), "success");
           }
         } catch (err) {
           console.warn("Queue flush interrupted:", err);
@@ -1711,7 +1711,7 @@
 
       document.getElementById("btn-flush-queue").addEventListener("click", () => {
         if (!isPhoneConnected) {
-          showToast("먼저 노트북과 연결해 주세요.", "error");
+          showToast(tr("connectFirst"), "error");
           return;
         }
         flushQueue();
@@ -1719,13 +1719,13 @@
 
       // 네트워크 복구/단절 감지
       window.addEventListener("online", () => {
-        showToast("네트워크가 복구되었습니다.", "info");
+        showToast(tr("online"), "info");
         if (isPhoneConnected) flushQueue();
       });
 
       window.addEventListener("offline", () => {
         setPhoneStatus("disconnected");
-        showToast("오프라인 상태입니다. 영상이 전송 대기열에 안전하게 저장됩니다.", "info");
+        showToast(tr("offline"), "info");
       });
 
       // PWA 설치 안내 모달
@@ -1820,6 +1820,74 @@
       // =========================================================
       const I18N = {
         ko: {
+          ready: "준비 중...",
+          applyCode: "적용",
+          randomCode: "랜덤",
+          qrAddress: "QR 접속용 주소 (호스트/URL)",
+          detectIP: "IP 자동 감지",
+          resetQR: "현재 주소로 초기화",
+          qrWarning: "현재 주소가 127.0.0.1/localhost입니다. 휴대폰 사파리 접속을 위해 노트북 IP 또는 HTTPS 주소를 입력하세요.",
+          noDevices: "아직 연결된 휴대폰이 없습니다.",
+          all: "전체",
+          emptyMedia: "휴대폰에서 영상이나 사진을 촬영해 전송하면 이곳에 표시됩니다.",
+          uploading: "전송 중...",
+          emptyQueue: "대기 중인 영상이 없습니다.",
+          codeExample: "예: Z9PZT",
+          urlExample: "예: https://munjojung.github.io/snaptopc/",
+          nameExample: "예: 철수-폰",
+          editTitle: "연결 코드 변경",
+          resetTitle: "기본 코드(Z9PZT)로 복원",
+          camTitle: "전/후면 카메라 전환",
+          ipFound: "감지된 로컬 IP: {0}",
+          ipHidden: "브라우저 정책으로 로컬 IP가 숨겨졌을 수 있습니다. 직접 주소를 입력해 주세요.",
+          invalidCode: "영문 또는 숫자로 된 연결 코드를 입력해 주세요.",
+          peerFail: "PeerJS 로드 실패",
+          peerNetwork: "네트워크 연결을 확인해 주세요. (PeerJS 스크립트 로드 실패)",
+          relayWait: "로컬 중계 대기 중",
+          receiveWait: "수신 대기 중",
+          codeReady: "연결 코드 {0}가 준비되었습니다.",
+          codeTaken: "코드 사용 중",
+          connError: "연결 오류",
+          codeTakenMsg: "코드 {0}가 이미 사용 중입니다. 잠시 후 다시 시도하거나 코드를 변경해 주세요.",
+          signalFail: "시그널링 서버 연결에 실패했습니다.",
+          unnamed: "이름 없는 기기",
+          deviceCount: "{0}대",
+          connected: "연결됨",
+          deviceConnected: "{0} 기기가 연결되었습니다.",
+          received: "{0}에서 {1} 수신 완료!",
+          receiving: "{0} 수신 중...",
+          allCount: "전체 ({0})",
+          noMedia: "표시할 영상이 없습니다.",
+          save: "저장",
+          codeReset: "기본 연결 코드({0})로 복원했습니다.",
+          ipUpdated: "로컬 IP ({0})로 QR 주소가 갱신되었습니다.",
+          ipFailed: "로컬 IP를 자동 감지하지 못했습니다. 직접 입력해 주세요.",
+          qrReset: "QR 접속용 주소가 현재 주소로 초기화되었습니다.",
+          noCameraAPI: "이 환경에서는 카메라 API를 사용할 수 없습니다. (갤러리 선택 이용 가능)",
+          cameraPermission: "카메라 권한을 허용해 주세요. (갤러리 선택은 계속 사용 가능)",
+          enterCode: "연결 코드를 입력해 주세요.",
+          peerMissing: "PeerJS 라이브러리를 불러오지 못했습니다.",
+          initFailed: "연결을 초기화할 수 없습니다.",
+          timeout: "연결 시간이 초과되었습니다. 코드를 확인하거나 새로고침해 주세요.",
+          laptopConnected: "노트북({0})과 연결되었습니다.",
+          laptopDisconnected: "노트북과 연결이 끊어졌습니다.",
+          laptopFailed: "노트북 연결에 실패했습니다.",
+          connectFailed: "연결할 수 없습니다. 코드 및 네트워크를 확인하세요.",
+          cameraNotReady: "카메라가 준비되지 않았습니다.",
+          stopRec: "촬영 종료 및 전송",
+          cameraRetry: "카메라 영상이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.",
+          canvasFail: "사진 캡처 캔버스를 초기화할 수 없습니다.",
+          photoFail: "사진 파일 생성에 실패했습니다.",
+          photoError: "사진 촬영 중 오류가 발생했습니다.",
+          queued: "미연결 상태입니다. 대기열에 안전하게 저장되었습니다.",
+          delete: "삭제",
+          sending: "{0} 전송 중...",
+          sent: "{0} 전송 완료!",
+          connectFirst: "먼저 노트북과 연결해 주세요.",
+          online: "네트워크가 복구되었습니다.",
+          offline: "오프라인 상태입니다. 영상이 전송 대기열에 안전하게 저장됩니다.",
+          appTitle: "SnapToPC - 폰-노트북 영상 전송기",
+          zeroDevices: "0대",
           pwaTitle: "홈 화면에 앱으로 설치하기",
           pwaDesc: "이 페이지는 PWA(Progressive Web App)를 지원합니다. 홈 화면에 추가하면 일반 앱처럼 전체 화면으로 빠르게 실행할 수 있습니다.",
           pwaAndroid: "안드로이드 (Chrome):",
@@ -1885,6 +1953,74 @@
           phoneStatusDisconnected: "미연결 (오프라인 저장 모드)"
         },
         en: {
+          ready: "Preparing...",
+          applyCode: "Apply",
+          randomCode: "Random",
+          qrAddress: "QR address (host/URL)",
+          detectIP: "Detect IP",
+          resetQR: "Reset to current URL",
+          qrWarning: "The current address is 127.0.0.1/localhost. Enter the laptop IP or an HTTPS address for phone access.",
+          noDevices: "No phones connected yet.",
+          all: "All",
+          emptyMedia: "Photos and videos sent from your phone will appear here.",
+          uploading: "Sending...",
+          emptyQueue: "No pending media.",
+          codeExample: "e.g. Z9PZT",
+          urlExample: "e.g. https://munjojung.github.io/snaptopc/",
+          nameExample: "e.g. Alex-phone",
+          editTitle: "Change connection code",
+          resetTitle: "Restore default code (Z9PZT)",
+          camTitle: "Switch front/rear camera",
+          ipFound: "Detected local IP: {0}",
+          ipHidden: "Your browser may hide the local IP. Enter the address manually.",
+          invalidCode: "Enter a connection code using letters or numbers.",
+          peerFail: "PeerJS failed to load",
+          peerNetwork: "Check your network connection (PeerJS failed to load).",
+          relayWait: "Waiting for local relay",
+          receiveWait: "Ready to receive",
+          codeReady: "Connection code {0} is ready.",
+          codeTaken: "Code in use",
+          connError: "Connection error",
+          codeTakenMsg: "Code {0} is already in use. Retry later or change the code.",
+          signalFail: "Could not connect to the signaling server.",
+          unnamed: "Unnamed device",
+          deviceCount: "{0} devices",
+          connected: "Connected",
+          deviceConnected: "Device {0} connected.",
+          received: "Received {1} from {0}!",
+          receiving: "Receiving from {0}...",
+          allCount: "All ({0})",
+          noMedia: "No media to display.",
+          save: "Save",
+          codeReset: "Restored default code ({0}).",
+          ipUpdated: "QR address updated to local IP ({0}).",
+          ipFailed: "Could not detect local IP. Enter it manually.",
+          qrReset: "QR address reset to the current URL.",
+          noCameraAPI: "Camera API unavailable. You can still use the gallery.",
+          cameraPermission: "Allow camera access. You can still use the gallery.",
+          enterCode: "Enter the connection code.",
+          peerMissing: "Could not load PeerJS.",
+          initFailed: "Could not initialize the connection.",
+          timeout: "Connection timed out. Check the code or refresh.",
+          laptopConnected: "Connected to laptop ({0}).",
+          laptopDisconnected: "Disconnected from laptop.",
+          laptopFailed: "Could not connect to laptop.",
+          connectFailed: "Cannot connect. Check the code and network.",
+          cameraNotReady: "Camera is not ready.",
+          stopRec: "Stop & Send",
+          cameraRetry: "Camera preview is not ready. Try again shortly.",
+          canvasFail: "Could not initialize photo capture canvas.",
+          photoFail: "Could not create photo file.",
+          photoError: "An error occurred while taking a photo.",
+          queued: "Disconnected. Saved safely to the queue.",
+          delete: "Delete",
+          sending: "Sending {0}...",
+          sent: "Sent {0}!",
+          connectFirst: "Connect to your laptop first.",
+          online: "Network connection restored.",
+          offline: "Offline. Media will be saved safely to the transfer queue.",
+          appTitle: "SnapToPC - Phone to PC Media Transfer",
+          zeroDevices: "0 devices",
           pwaTitle: "Install on your home screen",
           pwaDesc: "This page supports PWA (Progressive Web App). Add it to your home screen for quick, full-screen access like a regular app.",
           pwaAndroid: "Android (Chrome):",
@@ -1956,18 +2092,29 @@
         currentLang = localStorage.getItem("snap2pc_lang") || "ko";
       } catch (e) {}
 
+      function tr(key, args = []) {
+        return (I18N[currentLang]?.[key] || I18N.ko[key] || key).replace(/\{(\d+)\}/g, (_, i) => String(args[Number(i)] ?? ""));
+      }
+      function localize(el, key, args = []) {
+        el.dataset.i18n = key;
+        el.dataset.i18nArgs = encodeURIComponent(JSON.stringify(args));
+        el.textContent = tr(key, args);
+      }
       function applyLanguage(lang) {
         currentLang = lang === "en" ? "en" : "ko";
         document.documentElement.lang = currentLang;
         const dict = I18N[currentLang];
         document.querySelectorAll("[data-i18n]").forEach((el) => {
           const key = el.getAttribute("data-i18n");
-          if (dict[key]) el.textContent = dict[key];
+          if (dict[key]) el.textContent = tr(key, JSON.parse(decodeURIComponent(el.dataset.i18nArgs || "%5B%5D")));
         });
         document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
           const key = el.getAttribute("data-i18n-placeholder");
           if (dict[key]) el.placeholder = dict[key];
         });
+        document.title = tr("appTitle");
+        document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = tr(el.dataset.i18nTitle); });
+        renderConnectedDevices();
         const toggleBtn = document.getElementById("btn-lang-toggle");
         if (toggleBtn) {
           toggleBtn.textContent = currentLang === "ko" ? "EN" : "KO";
