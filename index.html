@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.5</span></h1>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.7</span></h1>
           <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
@@ -744,7 +744,31 @@
           if (err.name !== 'AbortError') showToast(tr('folderError'), 'error');
         }
       });
-      async function saveToFolder(folder, name, blob) {
+      // Serialize folder scans and writes, including manual saves.
+      let folderSaveTail = Promise.resolve();
+      async function contentHash(blob) {
+        const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+        return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2,'0')).join('');
+      }
+      function saveToFolder(folder, name, blob) {
+        const task = folderSaveTail.then(async () => {
+          const hash = await contentHash(blob);
+          // The directory itself is the persistent source of truth, including older files.
+          for await (const entry of folder.values()) {
+            if (entry.kind !== 'file') continue;
+            let file;
+            try { file = await entry.getFile(); }
+            catch (err) { if (err.name === 'NotFoundError') continue; throw err; }
+            if (file.size === blob.size && await contentHash(file) === hash) {
+              return {handle:entry, name:entry.name, duplicate:true};
+            }
+          }
+          return {...await writeNewFile(folder,name,blob), duplicate:false};
+        });
+        folderSaveTail = task.catch(() => {});
+        return task;
+      }
+      async function writeNewFile(folder, name, blob) {
         // Random suffix prevents overwriting files from earlier browser sessions.
         const suffix = Array.from(crypto.getRandomValues(new Uint8Array(12)), x=>x.toString(16).padStart(2,'0')).join('');
         const dot = name.lastIndexOf('.');
@@ -761,27 +785,20 @@
           throw err;
         }
       }
-      async function downloadRecord(v, extraCopy = false) {
-        if (v.saving) return;
-        if (!extraCopy && (v.handle || (v.downloadRequested && !pcFolder))) return;
+      async function downloadRecord(v) {
+        if (v.saving || v.handle || (v.downloadRequested && !pcFolder)) return;
         v.saving = true;
+        renderPcVideos();
         const folder = pcFolder;
         try {
           if (folder) {
-            const source = v.blob || (v.handle && await v.handle.getFile());
-            if (!source) throw new Error('Missing source');
-            const saved = await saveToFolder(folder, v.fileName, source);
-            if (!v.handle) {
-              v.handle = saved.handle; v.fileName = saved.name;
-              if (v.url) URL.revokeObjectURL(v.url);
-              v.url = null; v.blob = null;
-              v.downloadRequested = false;
-            }
+            if (!v.blob) throw new Error('Missing source');
+            const saved = await saveToFolder(folder, v.fileName, v.blob);
+            v.handle = saved.handle; v.fileName = saved.name; v.duplicate = saved.duplicate;
+            if (v.url) URL.revokeObjectURL(v.url);
+            v.url = null; v.blob = null; v.downloadRequested = false;
             v.saveFailed = false;
-            showToast(tr('folderCopySaved'), 'success');
-          } else if (v.handle) {
-            // Never silently download a disk-backed record to another folder.
-            showToast(tr('chooseFolderFirst'), 'error');
+            showToast(tr(v.duplicate ? 'alreadySaved' : 'diskSaved'), 'success');
           } else if (v.url) {
             triggerDownload(v.url, v.fileName);
             v.downloadRequested = true;
@@ -1258,6 +1275,7 @@
               const saved = await saveToFolder(folder,fileName,blob);
               videoRecord.handle = saved.handle;
               videoRecord.fileName = saved.name;
+              videoRecord.duplicate = saved.duplicate;
             } catch (err) {
               showToast(tr('folderError'),'error');
               return respond('retry',{reason:'disk'});
@@ -1357,7 +1375,7 @@
           const card = document.createElement("div");
           card.className = "bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden flex flex-col";
           const isImage = v.mediaType === "image" || (v.blob && v.blob.type && v.blob.type.startsWith("image/"));
-          const previewHtml = !v.url ? `<div class="p-4 text-center text-emerald-300 text-xs" data-i18n="diskSaved">${tr("diskSaved")}</div>` : isImage
+          const previewHtml = !v.url ? `<div class="p-4 text-center text-emerald-300 text-xs" data-i18n="${v.duplicate ? "alreadySaved" : "diskSaved"}">${tr(v.duplicate ? "alreadySaved" : "diskSaved")}</div>` : isImage
             ? `<img src="${v.url}" alt="${escapeHtml(v.fileName)}" class="w-full aspect-video object-cover bg-black" />`
             : `<video src="${v.url}" controls class="w-full aspect-video bg-black"></video>`;
           card.innerHTML = `
@@ -1369,11 +1387,17 @@
                 <div class="text-[10px] text-slate-500">${formatBytes(v.size)} · ${v.timestamp}</div>
               </div>
               <button type="button" class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
-                <span data-i18n="${v.handle || (v.downloadRequested && !pcFolder) ? "extraCopy" : "save"}">${tr(v.handle || (v.downloadRequested && !pcFolder) ? "extraCopy" : "save")}</span>
+                <span data-i18n="${v.handle ? (v.duplicate ? "alreadySaved" : "diskSaved") : "save"}">${tr(v.handle ? (v.duplicate ? "alreadySaved" : "diskSaved") : "save")}</span>
               </button>
             </div>
           `;
-          card.querySelector(".btn-dl").addEventListener("click", () => downloadRecord(v, Boolean(v.handle || (v.downloadRequested && !pcFolder))));
+          const saveButton = card.querySelector(".btn-dl");
+          if (v.handle || v.saving || (v.downloadRequested && !pcFolder)) {
+            saveButton.disabled = true;
+            saveButton.className = "btn-dl shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold " + (v.handle ? "bg-emerald-900/60 text-emerald-300" : "bg-slate-700 text-slate-300");
+            localize(saveButton, v.handle ? (v.duplicate ? "alreadySaved" : "diskSaved") : v.saving ? "copySaving" : "downloadRequested");
+          }
+          saveButton.addEventListener("click", () => downloadRecord(v));
           if (!v.handle) {
             const status = document.createElement('p'); status.className = 'text-xs text-slate-400 px-3';
             localize(status, v.downloadRequested ? 'downloadRequested' : v.saveFailed ? 'saveFailed' : 'notSaved'); card.appendChild(status);
@@ -1532,7 +1556,7 @@
       function requestTransfer(conn, msg, expected) {
         return new Promise((resolve,reject) => {
           if (!conn.open || conn !== phoneConn) return reject(new Error("disconnected"));
-          const timer = setTimeout(() => { pendingAcks.delete(msg.sessionId); reject(new Error("timeout: " + msg.type)); }, 20000);
+          const timer = setTimeout(() => { pendingAcks.delete(msg.sessionId); reject(new Error("timeout: " + msg.type)); }, msg.type === "end" ? 180000 : 20000);
           pendingAcks.set(msg.sessionId, {conn, expected, index:msg.chunkIndex, finish: (result) => { clearTimeout(timer); pendingAcks.delete(msg.sessionId); resolve(result); }, fail: () => { clearTimeout(timer); pendingAcks.delete(msg.sessionId); reject(new Error("disconnected")); }});
           try { conn.send(msg); } catch (_) { pendingAcks.get(msg.sessionId)?.fail(); }
         });
@@ -2176,7 +2200,7 @@
           folderSelected: "저장 폴더: {0} (저장 확인 후 자동 메모리 해제)",
           folderUnsupported: "이 브라우저는 폴더 저장을 지원하지 않습니다.",
           folderError: "폴더 저장 또는 읽기 실패. 휴대폰 원본을 확인하세요.",
-          diskSaved: "디스크 저장 완료",
+          diskSaved: "✓ 디스크 저장 완료", alreadySaved: "✓ 이미 저장됨",
           openPreview: "미리보기 열기",
           closePreview: "미리보기 닫기",
           diskRemoveConfirm: "목록만 제거합니다. 디스크 파일은 유지됩니다.",
@@ -2238,7 +2262,7 @@
           receivedMediaTitle: "수신된 미디어 목록",
           receivedMediaDesc: "기기별로 필터링하거나 일괄 다운로드할 수 있습니다.",
           downloadAllBtn: "미저장 파일 일괄 저장",
-          extraCopy: "추가 저장", folderCopySaved: "지정 폴더에 저장했습니다.", chooseFolderFirst: "저장 폴더를 먼저 선택하세요.", downloadRequested: "다운로드 요청됨 (저장 완료 미확인)", notSaved: "미저장", saveFailed: "저장 실패",
+          copySavedCheck: "✓ 추가 저장 완료", copySaving: "저장 중...", copySavedFile: "추가 저장 파일: {0}", extraCopy: "추가 저장", folderCopySaved: "지정 폴더에 저장했습니다.", chooseFolderFirst: "저장 폴더를 먼저 선택하세요.", downloadRequested: "다운로드 요청됨 (저장 완료 미확인)", notSaved: "미저장", saveFailed: "저장 실패",
           laptopConnLabel: "노트북 연결",
           deviceNameLabel: "내 기기 이름 (구분용)",
           roomCodeLabel: "노트북 연결 코드",
@@ -2329,7 +2353,7 @@
           folderSelected: "Save folder: {0} (release memory after confirmed save)",
           folderUnsupported: "Folder saving is not supported in this browser.",
           folderError: "Folder read/write failed. Check the phone original.",
-          diskSaved: "Saved to disk",
+          diskSaved: "✓ Saved to disk", alreadySaved: "✓ Already saved",
           openPreview: "Open preview",
           closePreview: "Close preview",
           diskRemoveConfirm: "Remove from list only? Disk file is retained.",
@@ -2391,7 +2415,7 @@
           receivedMediaTitle: "Received Media",
           receivedMediaDesc: "Filter by device or download all files at once.",
           downloadAllBtn: "Save unsaved files",
-          extraCopy: "Save copy", folderCopySaved: "Saved to selected folder.", chooseFolderFirst: "Choose a save folder first.", downloadRequested: "Download requested (not verified)", notSaved: "Not saved", saveFailed: "Save failed",
+          copySavedCheck: "✓ Copy saved", copySaving: "Saving...", copySavedFile: "Saved copy: {0}", extraCopy: "Save copy", folderCopySaved: "Saved to selected folder.", chooseFolderFirst: "Choose a save folder first.", downloadRequested: "Download requested (not verified)", notSaved: "Not saved", saveFailed: "Save failed",
           laptopConnLabel: "Laptop Connection",
           deviceNameLabel: "My Device Name",
           roomCodeLabel: "Laptop Code",
