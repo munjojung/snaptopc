@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC</h1>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.2</span></h1>
           <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
@@ -993,7 +993,15 @@
             renderConnectedDevices();
           });
 
-          conn.on("data", (data) => handlePcData(conn, data));
+          conn.on("data", (data) => {
+            handlePcData(conn, data).catch(err => {
+              console.error("Receive failed", err);
+              if (data && typeof data.sessionId === "string") {
+                incomingSessions.delete(sessionKey(conn, data.sessionId));
+                reply(conn, {type:"retry", sessionId:data.sessionId, reason:"receiver"});
+              }
+            });
+          });
 
           conn.on("close", () => {
             if (connectedSenders.get(conn.peer)?.conn === conn) connectedSenders.delete(conn.peer);
@@ -1047,7 +1055,7 @@
       }
 
       function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-      function handlePcData(conn, data) {
+      async function handlePcData(conn, data) {
         if (!data || typeof data !== "object") return;
 
         if (data.type === "hello") {
@@ -1072,7 +1080,7 @@
           if (old) incomingSessions.delete(key);
           const reserved = [...incomingSessions.values()].reduce((n,v)=>n+v.totalSize,0);
           const retained = receivedVideos.reduce((n,v)=>n+v.size,0);
-          if (incomingSessions.size >= MAX_ACTIVE || reserved + retained + size > MAX_BYTES) return respond("busy");
+          if (incomingSessions.size >= MAX_ACTIVE || reserved + retained + size > MAX_BYTES) return respond("busy", {reason:"capacity"});
           const sender = connectedSenders.get(conn.peer);
           const deviceName = String(sender.deviceName || "Phone").slice(0,80);
           incomingSessions.set(key, {conn, transferKey, deviceName, originalFileName: String(data.fileName || "video.webm").slice(0,255), mimeType: String(data.mimeType || "video/webm").slice(0,100), totalSize:size, totalChunks:count, chunks:[], receivedCount:0, touched:Date.now()});
@@ -1085,10 +1093,20 @@
         if (data.type === "chunk") {
           const i = data.chunkIndex;
           const expected = Math.min(CHUNK_SIZE, sess.totalSize - i * CHUNK_SIZE);
-          if (!Number.isInteger(i) || i !== sess.receivedCount || i >= sess.totalChunks || !(data.data instanceof ArrayBuffer) || data.data.byteLength !== expected) {
-            incomingSessions.delete(key); renderActiveTransfers(); return respond("retry");
+          let payload = data.data;
+          if (typeof payload === "string" && payload.length <= Math.ceil(CHUNK_SIZE / 3) * 4) {
+            const raw = atob(payload);
+            const bytes = new Uint8Array(raw.length);
+            for (let j=0; j<raw.length; j++) bytes[j] = raw.charCodeAt(j);
+            payload = bytes.buffer;
           }
-          sess.chunks.push(data.data); sess.receivedCount++;
+          if (payload instanceof Blob) payload = await payload.arrayBuffer();
+          else if (ArrayBuffer.isView(payload)) payload = payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength);
+          if (incomingSessions.get(key) !== sess) return respond("retry", {reason:"session"});
+          if (!Number.isInteger(i) || i !== sess.receivedCount || i >= sess.totalChunks || !(payload instanceof ArrayBuffer) || payload.byteLength !== expected) {
+            incomingSessions.delete(key); renderActiveTransfers(); return respond("retry", {reason:"chunk"});
+          }
+          sess.chunks.push(payload); sess.receivedCount++;
           renderActiveTransfers();
           return respond("chunkAck", {chunkIndex:i});
         }
@@ -1121,6 +1139,7 @@
           receivedVideos.unshift(videoRecord);
           incomingSessions.delete(key);
           completedTransfers.set(sess.transferKey, true);
+          reply(conn, {type:"ack", sessionId:data.sessionId});
           renderActiveTransfers();
           renderFilterTabs();
           renderPcVideos();
@@ -1130,9 +1149,6 @@
             triggerDownload(url, fileName);
           }
 
-          try {
-            conn.send({ type: "ack", sessionId: data.sessionId });
-          } catch (e) {}
 
           showToast(tr("received" , [sess.deviceName, fileName]), "success");
         }
@@ -1359,7 +1375,7 @@
       function requestTransfer(conn, msg, expected) {
         return new Promise((resolve,reject) => {
           if (!conn.open || conn !== phoneConn) return reject(new Error("disconnected"));
-          const timer = setTimeout(() => { pendingAcks.delete(msg.sessionId); reject(new Error("timeout")); }, 20000);
+          const timer = setTimeout(() => { pendingAcks.delete(msg.sessionId); reject(new Error("timeout: " + msg.type)); }, 20000);
           pendingAcks.set(msg.sessionId, {conn, expected, index:msg.chunkIndex, finish: (result) => { clearTimeout(timer); pendingAcks.delete(msg.sessionId); resolve(result); }, fail: () => { clearTimeout(timer); pendingAcks.delete(msg.sessionId); reject(new Error("disconnected")); }});
           try { conn.send(msg); } catch (_) { pendingAcks.get(msg.sessionId)?.fail(); }
         });
@@ -1480,7 +1496,7 @@
             if (gen !== generation || !msg) return;
             const p = pendingAcks.get(msg.sessionId);
             if (!p || p.conn !== connection) return;
-            if (["busy","reject","retry"].includes(msg.type) || (p.expected.includes(msg.type) && (msg.type !== "chunkAck" || msg.chunkIndex === p.index))) p.finish(msg.type);
+            if (["busy","reject","retry"].includes(msg.type) || (p.expected.includes(msg.type) && (msg.type !== "chunkAck" || msg.chunkIndex === p.index))) p.finish(msg.type + (msg.reason ? ":" + msg.reason : ""));
           });
 
           phoneConn.on("close", () => {
@@ -1776,7 +1792,10 @@
               if (result !== "ready") throw new Error(result);
               for (let i=0; i<totalChunks; i++) {
                 const buffer = await item.blob.slice(i*CHUNK_SIZE, (i+1)*CHUNK_SIZE).arrayBuffer();
-                const status = await requestTransfer(conn, {type:"chunk",sessionId,chunkIndex:i,data:buffer}, ["chunkAck"]);
+                const bytes = new Uint8Array(buffer);
+                let raw = "";
+                for (let j=0; j<bytes.length; j+=8192) raw += String.fromCharCode(...bytes.subarray(j,j+8192));
+                const status = await requestTransfer(conn, {type:"chunk",sessionId,chunkIndex:i,data:btoa(raw)}, ["chunkAck"]);
                 if (status !== "chunkAck") throw new Error(status);
                 const pct = Math.round((i+1)/totalChunks*100);
                 progressPercent.textContent = `${pct}%`; progressBar.style.width = `${pct}%`;
@@ -1790,7 +1809,7 @@
           }
         } catch (err) {
           console.warn("Queue flush interrupted:", err);
-          showToast(tr("transferRetry"), "info");
+          showToast(tr("transferRetry") + " [" + String(err.message || err).slice(0,80) + "]", "info");
           if (retryCount < 8) { clearTimeout(retryTimer); retryTimer = setTimeout(() => flushQueue(), Math.min(30000, 1000 * 2 ** retryCount++)); }
         } finally {
           isFlushingQueue = false;
