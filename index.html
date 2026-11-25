@@ -361,16 +361,16 @@
   <!-- PWA 설치 안내 모달 -->
   <div id="pwa-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="glass-card rounded-2xl max-w-md w-full p-6">
-      <h3 class="text-lg font-bold text-white mb-2">홈 화면에 앱으로 설치하기</h3>
-      <p class="text-xs text-slate-300 leading-relaxed mb-4">
+      <h3 class="text-lg font-bold text-white mb-2" data-i18n="pwaTitle">홈 화면에 앱으로 설치하기</h3>
+      <p class="text-xs text-slate-300 leading-relaxed mb-4" data-i18n="pwaDesc">
         이 페이지는 PWA(Progressive Web App)를 지원합니다. 홈 화면에 추가하면 일반 앱처럼 전체 화면으로 빠르게 실행할 수 있습니다.
       </p>
       <ul class="text-xs text-slate-300 space-y-2 mb-5 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
-        <li>• <strong>안드로이드 (Chrome):</strong> 우측 상단 메뉴(⋮) → <em>홈 화면에 추가</em> 또는 <em>앱 설치</em></li>
-        <li>• <strong>아이폰 (Safari):</strong> 하단 공유 버튼(□↑) → <em>홈 화면에 추가</em></li>
-        <li>• <strong>노트북 (Chrome/Edge):</strong> 주소창 우측 설치 아이콘 클릭</li>
+        <li>• <strong data-i18n="pwaAndroid">안드로이드 (Chrome):</strong> <span data-i18n="pwaAndroidMenu">우측 상단 메뉴(⋮) →</span> <em data-i18n="pwaAddHome">홈 화면에 추가</em> <span data-i18n="pwaOr">또는</span> <em data-i18n="pwaInstall">앱 설치</em></li>
+        <li>• <strong data-i18n="pwaIos">아이폰 (Safari):</strong> <span data-i18n="pwaIosMenu">하단 공유 버튼(□↑) →</span> <em data-i18n="pwaAddHome">홈 화면에 추가</em></li>
+        <li>• <strong data-i18n="pwaDesktop">노트북 (Chrome/Edge):</strong> <span data-i18n="pwaDesktopMenu">주소창 우측 설치 아이콘 클릭</span></li>
       </ul>
-      <button id="btn-close-pwa" type="button" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition">
+      <button id="btn-close-pwa" type="button" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition" data-i18n="pwaOk">
         확인
       </button>
     </div>
@@ -380,39 +380,39 @@
   <div id="turn-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
     <div class="glass-card rounded-2xl max-w-md w-full p-6">
       <div class="flex items-center justify-between mb-2">
-        <h3 class="text-lg font-bold text-white">외부망(TURN) 설정</h3>
+        <h3 class="text-lg font-bold text-white" data-i18n="turnTitle">외부망(TURN) 설정</h3>
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="turn-enabled" class="sr-only peer" />
           <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
         </label>
       </div>
-      <p class="text-xs text-slate-400 leading-relaxed mb-4">
+      <p class="text-xs text-slate-400 leading-relaxed mb-4" data-i18n="turnDesc">
         모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 입력한 정보는 내 기기 브라우저에만 저장됩니다.
       </p>
 
       <div class="space-y-3 mb-5">
         <div>
-          <label for="turn-url" class="block text-[11px] font-semibold text-slate-300 mb-1">TURN 서버 주소 (URL, 여러 개는 쉼표로 구분)</label>
-          <input id="turn-url" type="text" placeholder="예: turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+          <label for="turn-url" class="block text-[11px] font-semibold text-slate-300 mb-1" data-i18n="turnUrlLabel">TURN 서버 주소 (URL, 여러 개는 쉼표로 구분)</label>
+          <input id="turn-url" type="text" data-i18n-placeholder="turnUrlPlaceholder" placeholder="예: turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
         </div>
         <div>
-          <label for="turn-username" class="block text-[11px] font-semibold text-slate-300 mb-1">사용자 이름 (Username)</label>
-          <input id="turn-username" type="text" placeholder="발급받은 Username" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+          <label for="turn-username" class="block text-[11px] font-semibold text-slate-300 mb-1" data-i18n="turnUserLabel">사용자 이름 (Username)</label>
+          <input id="turn-username" type="text" data-i18n-placeholder="turnUserPlaceholder" placeholder="발급받은 Username" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
         </div>
         <div>
-          <label for="turn-credential" class="block text-[11px] font-semibold text-slate-300 mb-1">비밀번호 (Credential)</label>
-          <input id="turn-credential" type="password" placeholder="발급받은 Credential" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+          <label for="turn-credential" class="block text-[11px] font-semibold text-slate-300 mb-1" data-i18n="turnCredentialLabel">비밀번호 (Credential)</label>
+          <input id="turn-credential" type="password" data-i18n-placeholder="turnCredentialPlaceholder" placeholder="발급받은 Credential" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
         </div>
       </div>
 
       <div class="flex gap-2">
-        <button id="btn-clear-turn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition">
+        <button id="btn-clear-turn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition" data-i18n="turnClear">
           초기화
         </button>
-        <button id="btn-close-turn" type="button" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+        <button id="btn-close-turn" type="button" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition" data-i18n="turnClose">
           닫기
         </button>
-        <button id="btn-save-turn" type="button" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+        <button id="btn-save-turn" type="button" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition" data-i18n="turnSave">
           저장 및 적용
         </button>
       </div>
@@ -1770,7 +1770,7 @@
         if (currentPcRoomCode) {
           renderPcQrCode(currentPcRoomCode);
         }
-        showToast("TURN 설정이 초기화되었습니다. (내부망 기본 모드)", "info");
+        showToast(I18N[currentLang].turnResetToast, "info");
       });
 
       document.getElementById("btn-save-turn").addEventListener("click", () => {
@@ -1780,7 +1780,7 @@
         const credential = document.getElementById("turn-credential").value.trim();
 
         if (enabled && !url) {
-          showToast("외부망(TURN)을 켜려면 서버 주소(URL)를 입력해 주세요.", "error");
+          showToast(I18N[currentLang].turnRequiredToast, "error");
           return;
         }
 
@@ -1799,7 +1799,7 @@
           }
         }
         showToast(
-          enabled ? "외부망(TURN) 설정이 저장·적용되었습니다." : "내부망 기본 모드로 저장되었습니다.",
+          enabled ? I18N[currentLang].turnSavedToast : I18N[currentLang].turnLocalToast,
           "success"
         );
       });
@@ -1814,15 +1814,39 @@
         }
       }
       const roomParam = urlParams.get("room");
-      if (roomParam) {
-        initPhoneMode(roomParam);
-      }
 
       // =========================================================
       // 6. 다국어(한글/영어) 토글
       // =========================================================
       const I18N = {
         ko: {
+          pwaTitle: "홈 화면에 앱으로 설치하기",
+          pwaDesc: "이 페이지는 PWA(Progressive Web App)를 지원합니다. 홈 화면에 추가하면 일반 앱처럼 전체 화면으로 빠르게 실행할 수 있습니다.",
+          pwaAndroid: "안드로이드 (Chrome):",
+          pwaIos: "아이폰 (Safari):",
+          pwaDesktop: "노트북 (Chrome/Edge):",
+          pwaInstall: "앱 설치",
+          pwaAndroidMenu: "우측 상단 메뉴(⋮) →",
+          pwaOr: "또는",
+          pwaIosMenu: "하단 공유 버튼(□↑) →",
+          pwaDesktopMenu: "주소창 우측 설치 아이콘 클릭",
+          pwaAddHome: "홈 화면에 추가",
+          pwaOk: "확인",
+          turnTitle: "외부망(TURN) 설정",
+          turnDesc: "모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 입력한 정보는 내 기기 브라우저에만 저장됩니다.",
+          turnUrlLabel: "TURN 서버 주소 (URL, 여러 개는 쉼표로 구분)",
+          turnUserLabel: "사용자 이름 (Username)",
+          turnCredentialLabel: "비밀번호 (Credential)",
+          turnClear: "초기화",
+          turnClose: "닫기",
+          turnSave: "저장 및 적용",
+          turnUrlPlaceholder: "예: turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp",
+          turnUserPlaceholder: "발급받은 Username",
+          turnCredentialPlaceholder: "발급받은 Credential",
+          turnResetToast: "TURN 설정이 초기화되었습니다. (내부망 기본 모드)",
+          turnRequiredToast: "외부망(TURN)을 켜려면 서버 주소(URL)를 입력해 주세요.",
+          turnSavedToast: "외부망(TURN) 설정이 저장·적용되었습니다.",
+          turnLocalToast: "내부망 기본 모드로 저장되었습니다.",
           appSubtitle: "P2P 다중 영상 전송기",
           turnBtn: "외부망(TURN)",
           pwaBtn: "앱으로 설치 안내",
@@ -1861,6 +1885,33 @@
           phoneStatusDisconnected: "미연결 (오프라인 저장 모드)"
         },
         en: {
+          pwaTitle: "Install on your home screen",
+          pwaDesc: "This page supports PWA (Progressive Web App). Add it to your home screen for quick, full-screen access like a regular app.",
+          pwaAndroid: "Android (Chrome):",
+          pwaIos: "iPhone (Safari):",
+          pwaDesktop: "Laptop (Chrome/Edge):",
+          pwaInstall: "Install app",
+          pwaAndroidMenu: "Top-right menu (⋮) →",
+          pwaOr: "or",
+          pwaIosMenu: "Bottom Share button (□↑) →",
+          pwaDesktopMenu: "Click the install icon on the right of the address bar",
+          pwaAddHome: "Add to Home Screen",
+          pwaOk: "OK",
+          turnTitle: "External Network (TURN) Settings",
+          turnDesc: "Leave this off when devices share a Wi-Fi network. Enable it when connecting from an external network (LTE/5G). Your settings are stored in your device browser.",
+          turnUrlLabel: "TURN server URLs (comma-separated)",
+          turnUserLabel: "Username",
+          turnCredentialLabel: "Password (Credential)",
+          turnClear: "Reset",
+          turnClose: "Close",
+          turnSave: "Save & Apply",
+          turnUrlPlaceholder: "e.g. turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp",
+          turnUserPlaceholder: "Your issued username",
+          turnCredentialPlaceholder: "Your issued credential",
+          turnResetToast: "TURN settings reset (default local network mode).",
+          turnRequiredToast: "Enter a server URL to enable TURN.",
+          turnSavedToast: "TURN settings saved and applied.",
+          turnLocalToast: "Saved in default local network mode.",
           appSubtitle: "P2P Multi-Video Sender",
           turnBtn: "External (TURN)",
           pwaBtn: "Install App",
@@ -1913,6 +1964,10 @@
           const key = el.getAttribute("data-i18n");
           if (dict[key]) el.textContent = dict[key];
         });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+          const key = el.getAttribute("data-i18n-placeholder");
+          if (dict[key]) el.placeholder = dict[key];
+        });
         const toggleBtn = document.getElementById("btn-lang-toggle");
         if (toggleBtn) {
           toggleBtn.textContent = currentLang === "ko" ? "EN" : "KO";
@@ -1930,6 +1985,9 @@
       });
 
       applyLanguage(currentLang);
+      if (roomParam) {
+        initPhoneMode(roomParam);
+      }
     })();
   </script>
 </body>
