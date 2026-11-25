@@ -56,11 +56,14 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
+        <button id="btn-lang-toggle" type="button" class="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition">
+          EN
+        </button>
         <button id="btn-turn-settings" type="button" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
           <span id="turn-status-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
-          외부망(TURN)
+          <span data-i18n="turnBtn">외부망(TURN)</span>
         </button>
-        <button id="btn-pwa-info" type="button" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+        <button id="btn-pwa-info" type="button" data-i18n="pwaBtn" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
           앱으로 설치 안내
         </button>
       </div>
@@ -73,11 +76,11 @@
     <!-- 1. 초기 모드 선택 화면 -->
     <section id="view-select" class="flex-1 flex flex-col items-center justify-center py-8">
       <div class="text-center max-w-lg mb-8">
-        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 mb-3">
+        <span data-i18n="heroBadge" class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 mb-3">
           별도 서버 저장 없음 · WebRTC 직접 전송
         </span>
-        <h2 class="text-2xl sm:text-3xl font-bold text-white mb-2">어떤 기기에서 사용하시나요?</h2>
-        <p class="text-sm text-slate-400">
+        <h2 data-i18n="heroTitle" class="text-2xl sm:text-3xl font-bold text-white mb-2">어떤 기기에서 사용하시나요?</h2>
+        <p data-i18n="heroDesc" class="text-sm text-slate-400">
           여러 대의 휴대폰에서 촬영한 영상을 한 대의 노트북으로 모으고, 오프라인 시에는 휴대폰에 안전하게 임시 저장합니다.
         </p>
       </div>
@@ -91,13 +94,13 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 class="text-lg font-bold text-white mb-1">노트북 / PC (받기)</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">
+            <h3 data-i18n="pcCardTitle" class="text-lg font-bold text-white mb-1">노트북 / PC (받기)</h3>
+            <p data-i18n="pcCardDesc" class="text-xs text-slate-400 leading-relaxed">
               연결 코드와 QR을 생성하고 여러 휴대폰에서 보내는 영상을 기기별로 구분해 저장합니다.
             </p>
           </div>
           <div class="mt-5 text-xs font-semibold text-indigo-400 flex items-center gap-1">
-            수신 대기실 열기 <span>→</span>
+            <span data-i18n="pcCardCta">수신 대기실 열기</span> <span>→</span>
           </div>
         </button>
 
@@ -109,13 +112,13 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 class="text-lg font-bold text-white mb-1">휴대폰 (촬영 및 전송)</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">
+            <h3 data-i18n="phoneCardTitle" class="text-lg font-bold text-white mb-1">휴대폰 (촬영 및 전송)</h3>
+            <p data-i18n="phoneCardDesc" class="text-xs text-slate-400 leading-relaxed">
               노트북에 연결해 영상을 촬영·전송합니다. 연결이 끊겨도 대기열에 자동 저장됩니다.
             </p>
           </div>
           <div class="mt-5 text-xs font-semibold text-cyan-400 flex items-center gap-1">
-            카메라 및 전송 시작 <span>→</span>
+            <span data-i18n="phoneCardCta">카메라 및 전송 시작</span> <span>→</span>
           </div>
         </button>
       </div>
@@ -127,22 +130,22 @@
         <!-- 좌측: 연결 정보 & QR -->
         <div class="glass-card rounded-2xl p-5 flex flex-col items-center text-center">
           <div class="w-full flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-slate-400">연결 상태</span>
+            <span data-i18n="connStatus" class="text-xs font-semibold text-slate-400">연결 상태</span>
             <span id="pc-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300">
               준비 중...
             </span>
           </div>
 
-          <p class="text-xs text-slate-400 mb-1">휴대폰에서 아래 코드를 입력하세요</p>
+          <p data-i18n="pcCodePrompt" class="text-xs text-slate-400 mb-1">휴대폰에서 아래 코드를 입력하세요</p>
           <div class="w-full flex flex-wrap items-center justify-center gap-2 mb-4">
             <div id="pc-room-code" class="text-3xl font-extrabold tracking-[0.25em] text-white bg-slate-900/90 px-5 py-2.5 rounded-xl border border-slate-700 select-all">
               Z9PZT
             </div>
             <div class="flex items-center gap-1.5">
-              <button id="btn-edit-pc-code" type="button" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700 transition" title="연결 코드 변경">
+              <button id="btn-edit-pc-code" type="button" data-i18n="editCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700 transition" title="연결 코드 변경">
                 코드 변경
               </button>
-              <button id="btn-reset-pc-code" type="button" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-indigo-300 border border-slate-700 transition" title="기본 코드(Z9PZT)로 복원">
+              <button id="btn-reset-pc-code" type="button" data-i18n="resetCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-indigo-300 border border-slate-700 transition" title="기본 코드(Z9PZT)로 복원">
                 Z9PZT 복원
               </button>
             </div>
@@ -194,7 +197,7 @@
           </div>
 
           <div class="w-full flex items-center justify-between bg-slate-900/60 px-3.5 py-2.5 rounded-xl border border-slate-800 mb-3">
-            <span class="text-xs text-slate-300 font-medium">수신 완료 시 자동 저장</span>
+            <span data-i18n="autoSaveLabel" class="text-xs text-slate-300 font-medium">수신 완료 시 자동 저장</span>
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="pc-auto-save" class="sr-only peer" checked />
               <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
@@ -204,7 +207,7 @@
           <!-- 접속된 휴대폰 목록 -->
           <div class="w-full text-left mt-2">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-semibold text-slate-300">연결된 기기</span>
+              <span data-i18n="connectedDevices" class="text-xs font-semibold text-slate-300">연결된 기기</span>
               <span id="pc-device-count" class="text-xs text-indigo-400 font-bold">0대</span>
             </div>
             <div id="pc-connected-devices" class="space-y-1.5 max-h-36 overflow-y-auto text-xs">
@@ -222,10 +225,10 @@
           <div class="glass-card rounded-2xl p-5 flex-1 flex flex-col">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div>
-                <h3 class="text-base font-bold text-white">수신된 미디어 목록</h3>
-                <p class="text-xs text-slate-400">기기별로 필터링하거나 일괄 다운로드할 수 있습니다.</p>
+                <h3 data-i18n="receivedMediaTitle" class="text-base font-bold text-white">수신된 미디어 목록</h3>
+                <p data-i18n="receivedMediaDesc" class="text-xs text-slate-400">기기별로 필터링하거나 일괄 다운로드할 수 있습니다.</p>
               </div>
-              <button id="btn-pc-download-all" type="button" class="hidden px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-500/20">
+              <button id="btn-pc-download-all" type="button" data-i18n="downloadAllBtn" class="hidden px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-500/20">
                 전체 일괄 저장
               </button>
             </div>
@@ -251,7 +254,7 @@
       <!-- 연결 설정 카드 -->
       <div class="glass-card rounded-2xl p-4">
         <div class="flex items-center justify-between mb-3">
-          <span class="text-xs font-semibold text-slate-300">노트북 연결</span>
+          <span data-i18n="laptopConnLabel" class="text-xs font-semibold text-slate-300">노트북 연결</span>
           <span id="phone-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-700 text-slate-300">
             미연결 (오프라인 저장 모드)
           </span>
@@ -259,14 +262,14 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">내 기기 이름 (구분용)</label>
+            <label data-i18n="deviceNameLabel" class="block text-[11px] text-slate-400 mb-1">내 기기 이름 (구분용)</label>
             <input id="phone-device-name" type="text" maxlength="16" placeholder="예: 철수-폰" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-500" />
           </div>
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">노트북 연결 코드</label>
+            <label data-i18n="roomCodeLabel" class="block text-[11px] text-slate-400 mb-1">노트북 연결 코드</label>
             <div class="flex gap-1.5">
               <input id="phone-room-input" type="text" maxlength="8" placeholder="Z9PZT" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white uppercase tracking-widest font-bold focus:outline-none focus:border-cyan-500" />
-              <button id="btn-phone-connect" type="button" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold whitespace-nowrap transition">
+              <button id="btn-phone-connect" type="button" data-i18n="connectBtn" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold whitespace-nowrap transition">
                 연결
               </button>
             </div>
@@ -297,17 +300,17 @@
         <div class="grid grid-cols-3 gap-2">
           <button id="btn-record" type="button" class="w-full py-3.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
             <span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span>
-            촬영 시작
+            <span data-i18n="startRecBtn">촬영 시작</span>
           </button>
           <button id="btn-capture-photo" type="button" class="w-full py-3.5 px-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            사진 찍기
+            <span data-i18n="takePhotoBtn">사진 찍기</span>
           </button>
           <label class="w-full py-3.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold cursor-pointer border border-slate-700 transition flex items-center justify-center whitespace-nowrap">
-            갤러리 선택
+            <span data-i18n="galleryBtn">갤러리 선택</span>
             <input id="phone-file-input" type="file" accept="video/*,image/*" multiple class="hidden" />
           </label>
         </div>
@@ -315,8 +318,8 @@
         <!-- 내 기기에도 저장 옵션 -->
         <div class="flex items-center justify-between bg-slate-900/60 px-3.5 py-2.5 rounded-xl border border-slate-800">
           <div>
-            <span class="text-xs text-slate-200 font-medium block">내 기기에도 저장</span>
-            <span class="text-[10px] text-slate-400">촬영/선택한 영상을 휴대폰 다운로드 폴더에도 보관합니다.</span>
+            <span data-i18n="saveLocalLabel" class="text-xs text-slate-200 font-medium block">내 기기에도 저장</span>
+            <span data-i18n="saveLocalDesc" class="text-[10px] text-slate-400">촬영/선택한 영상을 휴대폰 다운로드 폴더에도 보관합니다.</span>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="phone-save-local" class="sr-only peer" />
@@ -340,10 +343,10 @@
       <div class="glass-card rounded-2xl p-4">
         <div class="flex items-center justify-between mb-3">
           <div>
-            <h3 class="text-sm font-bold text-white">전송 대기열 (오프라인 임시 저장)</h3>
-            <p class="text-[11px] text-slate-400">미연결 시 이곳에 저장되며, 연결되면 자동 전송됩니다.</p>
+            <h3 data-i18n="queueTitle" class="text-sm font-bold text-white">전송 대기열 (오프라인 임시 저장)</h3>
+            <p data-i18n="queueDesc" class="text-[11px] text-slate-400">미연결 시 이곳에 저장되며, 연결되면 자동 전송됩니다.</p>
           </div>
-          <button id="btn-flush-queue" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-300 border border-slate-700 transition">
+          <button id="btn-flush-queue" type="button" data-i18n="sendNowBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-300 border border-slate-700 transition">
             지금 전송
           </button>
         </div>
@@ -806,20 +809,14 @@
         if (!qrEl || !inputEl || !roomCode) return;
 
         let baseUrl = (inputEl.value || "").trim() || getDefaultPcBaseUrl();
-        const turnCfg = getSavedTurnConfig();
-        const turnToken = (turnCfg.enabled && turnCfg.url) ? encodeTurnParam(turnCfg) : "";
         try {
           const parsed = new URL(baseUrl);
           parsed.searchParams.set("room", roomCode);
-          if (turnToken) {
-            parsed.searchParams.set("turn", turnToken);
-          } else {
-            parsed.searchParams.delete("turn");
-          }
+          parsed.searchParams.delete("turn");
           baseUrl = parsed.toString();
         } catch (e) {
           const sep = baseUrl.includes("?") ? "&" : "?";
-          baseUrl = `${baseUrl}${sep}room=${encodeURIComponent(roomCode)}${turnToken ? `&turn=${encodeURIComponent(turnToken)}` : ""}`;
+          baseUrl = `${baseUrl}${sep}room=${encodeURIComponent(roomCode)}`;
         }
 
         qrEl.innerHTML = "";
@@ -1274,6 +1271,7 @@
       let facingMode = "environment";
       let isFlushingQueue = false;
       let phoneInitialized = false;
+      let phoneConnectTimeout = null;
       const pendingAcks = new Map();
 
       function setPhoneStatus(state) {
@@ -1328,6 +1326,10 @@
         document.getElementById("phone-room-input").value = code;
         setPhoneStatus("connecting");
 
+        if (phoneConnectTimeout) {
+          clearTimeout(phoneConnectTimeout);
+          phoneConnectTimeout = null;
+        }
         if (phoneConn) {
           try { phoneConn.close(); } catch (e) {}
           phoneConn = null;
@@ -1346,11 +1348,22 @@
           return;
         }
 
+        phoneConnectTimeout = setTimeout(() => {
+          if (!isPhoneConnected) {
+            setPhoneStatus("disconnected");
+            showToast("연결 시간이 초과되었습니다. 코드를 확인하거나 새로고침해 주세요.", "error");
+          }
+        }, 12000);
+
         phonePeer.on("open", () => {
           const targetId = PEER_PREFIX + code;
           phoneConn = phonePeer.connect(targetId, { reliable: true });
 
           phoneConn.on("open", () => {
+            if (phoneConnectTimeout) {
+              clearTimeout(phoneConnectTimeout);
+              phoneConnectTimeout = null;
+            }
             setPhoneStatus("connected");
             const devName = document.getElementById("phone-device-name").value.trim() || "휴대폰";
             try {
@@ -1371,17 +1384,29 @@
           });
 
           phoneConn.on("close", () => {
+            if (phoneConnectTimeout) {
+              clearTimeout(phoneConnectTimeout);
+              phoneConnectTimeout = null;
+            }
             setPhoneStatus("disconnected");
             showToast("노트북과 연결이 끊어졌습니다.", "info");
           });
 
           phoneConn.on("error", () => {
+            if (phoneConnectTimeout) {
+              clearTimeout(phoneConnectTimeout);
+              phoneConnectTimeout = null;
+            }
             setPhoneStatus("disconnected");
             showToast("노트북 연결에 실패했습니다.", "error");
           });
         });
 
         phonePeer.on("error", () => {
+          if (phoneConnectTimeout) {
+            clearTimeout(phoneConnectTimeout);
+            phoneConnectTimeout = null;
+          }
           setPhoneStatus("disconnected");
           showToast("연결할 수 없습니다. 코드 및 네트워크를 확인하세요.", "error");
         });
@@ -1789,6 +1814,108 @@
       if (roomParam) {
         initPhoneMode(roomParam);
       }
+
+      // =========================================================
+      // 6. 다국어(한글/영어) 토글
+      // =========================================================
+      const I18N = {
+        ko: {
+          turnBtn: "외부망(TURN)",
+          pwaBtn: "앱으로 설치 안내",
+          heroBadge: "별도 서버 저장 없음 · WebRTC 직접 전송",
+          heroTitle: "어떤 기기에서 사용하시나요?",
+          heroDesc: "여러 대의 휴대폰에서 촬영한 영상을 한 대의 노트북으로 모으고, 오프라인 시에는 휴대폰에 안전하게 임시 저장합니다.",
+          pcCardTitle: "노트북 / PC (받기)",
+          pcCardDesc: "연결 코드와 QR을 생성하고 여러 휴대폰에서 보내는 영상을 기기별로 구분해 저장합니다.",
+          pcCardCta: "수신 대기실 열기",
+          phoneCardTitle: "휴대폰 (촬영 및 전송)",
+          phoneCardDesc: "노트북에 연결해 영상을 촬영·전송합니다. 연결이 끊겨도 대기열에 자동 저장됩니다.",
+          phoneCardCta: "카메라 및 전송 시작",
+          connStatus: "연결 상태",
+          pcCodePrompt: "휴대폰에서 아래 코드를 입력하세요",
+          editCodeBtn: "코드 변경",
+          resetCodeBtn: "Z9PZT 복원",
+          autoSaveLabel: "수신 완료 시 자동 저장",
+          connectedDevices: "연결된 기기",
+          receivedMediaTitle: "수신된 미디어 목록",
+          receivedMediaDesc: "기기별로 필터링하거나 일괄 다운로드할 수 있습니다.",
+          downloadAllBtn: "전체 일괄 저장",
+          laptopConnLabel: "노트북 연결",
+          deviceNameLabel: "내 기기 이름 (구분용)",
+          roomCodeLabel: "노트북 연결 코드",
+          connectBtn: "연결",
+          startRecBtn: "촬영 시작",
+          takePhotoBtn: "사진 찍기",
+          galleryBtn: "갤러리 선택",
+          saveLocalLabel: "내 기기에도 저장",
+          saveLocalDesc: "촬영/선택한 영상을 휴대폰 다운로드 폴더에도 보관합니다.",
+          queueTitle: "전송 대기열 (오프라인 임시 저장)",
+          queueDesc: "미연결 시 이곳에 저장되며, 연결되면 자동 전송됩니다.",
+          sendNowBtn: "지금 전송"
+        },
+        en: {
+          turnBtn: "External (TURN)",
+          pwaBtn: "Install App",
+          heroBadge: "No Server Storage · Direct WebRTC Transfer",
+          heroTitle: "Which device are you using?",
+          heroDesc: "Collect videos and photos from multiple phones onto one laptop, with safe offline queueing when disconnected.",
+          pcCardTitle: "Laptop / PC (Receive)",
+          pcCardDesc: "Generate a connection code and QR to receive and organize media from multiple smartphones.",
+          pcCardCta: "Open Receive Room",
+          phoneCardTitle: "Smartphone (Capture & Send)",
+          phoneCardDesc: "Connect to your laptop to record and send media. Files are queued safely if offline.",
+          phoneCardCta: "Start Camera & Send",
+          connStatus: "Connection Status",
+          pcCodePrompt: "Enter this code on your smartphone",
+          editCodeBtn: "Change",
+          resetCodeBtn: "Reset Z9PZT",
+          autoSaveLabel: "Auto-save on completion",
+          connectedDevices: "Connected Devices",
+          receivedMediaTitle: "Received Media",
+          receivedMediaDesc: "Filter by device or download all files at once.",
+          downloadAllBtn: "Save All",
+          laptopConnLabel: "Laptop Connection",
+          deviceNameLabel: "My Device Name",
+          roomCodeLabel: "Laptop Code",
+          connectBtn: "Connect",
+          startRecBtn: "Record",
+          takePhotoBtn: "Take Photo",
+          galleryBtn: "Gallery",
+          saveLocalLabel: "Save to my device",
+          saveLocalDesc: "Also save a copy to your phone's Downloads folder.",
+          queueTitle: "Transfer Queue (Offline Cache)",
+          queueDesc: "Items are stored here when offline and sent automatically once connected.",
+          sendNowBtn: "Send Now"
+        }
+      };
+
+      let currentLang = "ko";
+      try {
+        currentLang = localStorage.getItem("snap2pc_lang") || "ko";
+      } catch (e) {}
+
+      function applyLanguage(lang) {
+        currentLang = lang === "en" ? "en" : "ko";
+        document.documentElement.lang = currentLang;
+        const dict = I18N[currentLang];
+        document.querySelectorAll("[data-i18n]").forEach((el) => {
+          const key = el.getAttribute("data-i18n");
+          if (dict[key]) el.textContent = dict[key];
+        });
+        const toggleBtn = document.getElementById("btn-lang-toggle");
+        if (toggleBtn) {
+          toggleBtn.textContent = currentLang === "ko" ? "EN" : "KO";
+        }
+        try {
+          localStorage.setItem("snap2pc_lang", currentLang);
+        } catch (e) {}
+      }
+
+      document.getElementById("btn-lang-toggle").addEventListener("click", () => {
+        applyLanguage(currentLang === "ko" ? "en" : "ko");
+      });
+
+      applyLanguage(currentLang);
     })();
   </script>
 </body>
