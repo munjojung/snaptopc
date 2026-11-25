@@ -52,7 +52,7 @@
         </div>
         <div>
           <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC</h1>
-          <p class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
+          <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -1272,21 +1272,24 @@
       let isFlushingQueue = false;
       let phoneInitialized = false;
       let phoneConnectTimeout = null;
+      let phoneStatusState = "disconnected";
       const pendingAcks = new Map();
 
       function setPhoneStatus(state) {
+        phoneStatusState = state;
         const badge = document.getElementById("phone-status-badge");
+        const dict = I18N[currentLang] || I18N.ko;
         if (state === "connected") {
           isPhoneConnected = true;
-          badge.textContent = "노트북과 연결됨";
+          badge.textContent = dict.phoneStatusConnected;
           badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300";
         } else if (state === "connecting") {
           isPhoneConnected = false;
-          badge.textContent = "연결 중...";
+          badge.textContent = dict.phoneStatusConnecting;
           badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300";
         } else {
           isPhoneConnected = false;
-          badge.textContent = "미연결 (오프라인 저장 모드)";
+          badge.textContent = dict.phoneStatusDisconnected;
           badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-700 text-slate-300";
         }
       }
@@ -1820,6 +1823,7 @@
       // =========================================================
       const I18N = {
         ko: {
+          appSubtitle: "P2P 다중 영상 전송기",
           turnBtn: "외부망(TURN)",
           pwaBtn: "앱으로 설치 안내",
           heroBadge: "별도 서버 저장 없음 · WebRTC 직접 전송",
@@ -1851,9 +1855,13 @@
           saveLocalDesc: "촬영/선택한 영상을 휴대폰 다운로드 폴더에도 보관합니다.",
           queueTitle: "전송 대기열 (오프라인 임시 저장)",
           queueDesc: "미연결 시 이곳에 저장되며, 연결되면 자동 전송됩니다.",
-          sendNowBtn: "지금 전송"
+          sendNowBtn: "지금 전송",
+          phoneStatusConnected: "노트북과 연결됨",
+          phoneStatusConnecting: "연결 중...",
+          phoneStatusDisconnected: "미연결 (오프라인 저장 모드)"
         },
         en: {
+          appSubtitle: "P2P Multi-Video Sender",
           turnBtn: "External (TURN)",
           pwaBtn: "Install App",
           heroBadge: "No Server Storage · Direct WebRTC Transfer",
@@ -1885,7 +1893,10 @@
           saveLocalDesc: "Also save a copy to your phone's Downloads folder.",
           queueTitle: "Transfer Queue (Offline Cache)",
           queueDesc: "Items are stored here when offline and sent automatically once connected.",
-          sendNowBtn: "Send Now"
+          sendNowBtn: "Send Now",
+          phoneStatusConnected: "Connected to Laptop",
+          phoneStatusConnecting: "Connecting...",
+          phoneStatusDisconnected: "Disconnected (Offline Cache)"
         }
       };
 
@@ -1905,6 +1916,9 @@
         const toggleBtn = document.getElementById("btn-lang-toggle");
         if (toggleBtn) {
           toggleBtn.textContent = currentLang === "ko" ? "EN" : "KO";
+        }
+        if (typeof setPhoneStatus === "function") {
+          setPhoneStatus(phoneStatusState);
         }
         try {
           localStorage.setItem("snap2pc_lang", currentLang);
