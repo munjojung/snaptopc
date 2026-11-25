@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.3</span></h1>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.4</span></h1>
           <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
@@ -695,6 +695,18 @@
       // =========================================================
       let pcPeer = null;
       const connectedSenders = new Map();
+      const validClientId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
+      function retireConnection(conn) {
+        if (connectedSenders.get(conn.peer)?.conn === conn) connectedSenders.delete(conn.peer);
+        dropSessions(conn);
+        try { conn.close(); } catch (_) {}
+        renderConnectedDevices();
+      }
+      setInterval(() => {
+        for (const sender of connectedSenders.values()) {
+          if (!sender.conn.open || Date.now() - sender.lastSeen > 120000) retireConnection(sender.conn);
+        }
+      }, 15000);
       const incomingSessions = new Map();
       const completedTransfers = new Map();
       const MAX_ACTIVE = 3, MAX_FILE = 256 * 1024 * 1024, MAX_BYTES = 512 * 1024 * 1024;
@@ -748,8 +760,23 @@
           throw err;
         }
       }
-      async function downloadRecord(v) {
-        if (v.url) return triggerDownload(v.url,v.fileName);
+      async function downloadRecord(v, extraCopy = false) {
+        if (v.saving) return;
+        if (!extraCopy && (v.handle || v.downloadRequested)) return;
+        if (v.url && !extraCopy && pcFolder) {
+          v.saving = true;
+          try {
+            const saved = await saveToFolder(pcFolder, v.fileName, v.blob);
+            v.handle = saved.handle; v.fileName = saved.name;
+            URL.revokeObjectURL(v.url); v.url = null; v.blob = null;
+          } catch (_) { v.saveFailed = true; showToast(tr('folderError'),'error'); }
+          finally { v.saving = false; renderPcVideos(); }
+          return;
+        }
+        if (v.url) {
+          triggerDownload(v.url,v.fileName);
+          v.downloadRequested = true; renderPcVideos(); return;
+        }
         try {
           const file = await v.handle.getFile();
           const url = URL.createObjectURL(file);
@@ -1059,7 +1086,7 @@
 
         pcPeer.on("connection", (conn) => {
           conn.on("open", () => {
-            connectedSenders.set(conn.peer, { conn, deviceName: "", unnamed: true });
+            connectedSenders.set(conn.peer, { conn, deviceName: "", unnamed: true, lastSeen: Date.now() });
             renderConnectedDevices();
           });
 
@@ -1128,10 +1155,19 @@
       async function handlePcData(conn, data) {
         if (!data || typeof data !== "object") return;
 
+        const registered = connectedSenders.get(conn.peer);
+        if (!registered || registered.conn !== conn) return;
+        registered.lastSeen = Date.now();
+        if (data.type === 'heartbeat') { reply(conn, {type:'heartbeatAck'}); return; }
         if (data.type === "hello") {
+          if (!validClientId(data.clientId)) return;
+          if (registered.clientId && registered.clientId !== data.clientId) return;
+          for (const other of connectedSenders.values()) {
+            if (other.conn !== conn && other.clientId === data.clientId) retireConnection(other.conn);
+          }
           const devName = String(data.deviceName || "Phone").trim() || "Phone";
           const current = connectedSenders.get(conn.peer) || { conn };
-          connectedSenders.set(conn.peer, { ...current, deviceName: devName });
+          connectedSenders.set(conn.peer, { ...current, deviceName: devName, clientId: data.clientId, unnamed: false });
           renderConnectedDevices();
           showToast(tr("deviceConnected" , [devName]), "info");
           return;
@@ -1141,7 +1177,7 @@
         const key = sessionKey(conn, data.sessionId);
         const respond = (type, extra = {}) => reply(conn, {type, sessionId: data.sessionId, ...extra});
         if (data.type === "meta") {
-          if (typeof data.clientId !== "string" || !/^[a-zA-Z0-9_-]{1,100}$/.test(data.clientId)) return respond("reject");
+          if (!validClientId(data.clientId) || registered.clientId !== data.clientId) return respond("reject");
           const transferKey = JSON.stringify([data.clientId, data.sessionId]);
           if (completedTransfers.has(transferKey)) return respond("ack");
           if (diskWrites.has(transferKey)) return respond("busy", {reason:"disk"});
@@ -1235,8 +1271,10 @@
           renderFilterTabs();
           renderPcVideos();
 
-          if (!folder && autoSaveEl && autoSaveEl.checked) {
+          if (!folder && autoSaveEl?.checked) {
             triggerDownload(videoRecord.url, fileName);
+            videoRecord.downloadRequested = true;
+            renderPcVideos();
           }
 
 
@@ -1300,7 +1338,7 @@
         const btnAll = document.getElementById("btn-pc-download-all");
         const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
 
-        if (receivedVideos.length > 0) btnAll.classList.remove("hidden");
+        if (filtered.some(v => !v.handle && !v.downloadRequested)) btnAll.classList.remove("hidden");
         else btnAll.classList.add("hidden");
 
         if (filtered.length === 0) {
@@ -1325,11 +1363,15 @@
                 <div class="text-[10px] text-slate-500">${formatBytes(v.size)} · ${v.timestamp}</div>
               </div>
               <button type="button" class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
-                <span data-i18n="save">${tr("save")}</span>
+                <span data-i18n="${v.handle || v.downloadRequested ? "extraCopy" : "save"}">${tr(v.handle || v.downloadRequested ? "extraCopy" : "save")}</span>
               </button>
             </div>
           `;
-          card.querySelector(".btn-dl").addEventListener("click", () => downloadRecord(v));
+          card.querySelector(".btn-dl").addEventListener("click", () => downloadRecord(v, Boolean(v.handle || v.downloadRequested)));
+          if (!v.handle) {
+            const status = document.createElement('p'); status.className = 'text-xs text-slate-400 px-3';
+            localize(status, v.downloadRequested ? 'downloadRequested' : v.saveFailed ? 'saveFailed' : 'notSaved'); card.appendChild(status);
+          }
           if (v.handle) {
             const preview = document.createElement('button');
             preview.className = 'text-xs text-cyan-300 p-2'; localize(preview,'openPreview');
@@ -1339,7 +1381,7 @@
           const release = document.createElement("button");
           release.className = "text-xs text-red-300 p-2";
           localize(release,"releaseMedia");
-          release.onclick = () => { if (!confirm(tr(v.handle ? "diskRemoveConfirm" : "releaseConfirm"))) return; if(v.url) URL.revokeObjectURL(v.url); receivedVideos.splice(receivedVideos.indexOf(v),1); renderFilterTabs(); renderPcVideos(); };
+          release.onclick = () => { if (v.saving) return; if (!confirm(tr(v.handle ? "diskRemoveConfirm" : "releaseConfirm"))) return; if(v.url) URL.revokeObjectURL(v.url); receivedVideos.splice(receivedVideos.indexOf(v),1); renderFilterTabs(); renderPcVideos(); };
           card.appendChild(release);
           listEl.appendChild(card);
         });
@@ -1356,7 +1398,7 @@
 
       document.getElementById("btn-pc-download-all").addEventListener("click", () => {
         const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
-        filtered.forEach((v, idx) => {
+        filtered.filter(v => !v.handle && !v.downloadRequested).forEach((v, idx) => {
           setTimeout(() => downloadRecord(v), idx * 300);
         });
       });
@@ -1430,6 +1472,17 @@
       // =========================================================
       let phonePeer = null;
       let phoneConn = null;
+      let lastHeartbeatAck = 0;
+      setInterval(() => {
+        const conn = phoneConn;
+        if (!isPhoneConnected || !conn?.open) return;
+        if (Date.now() - lastHeartbeatAck > 120000) {
+          failPending(conn); setPhoneStatus('disconnected');
+          try { conn.close(); } catch (_) {}
+          scheduleReconnect(); return;
+        }
+        reply(conn, {type:'heartbeat'});
+      }, 15000);
       let isPhoneConnected = false;
       let mediaStream = null;
       let mediaRecorder = null;
@@ -1581,10 +1634,11 @@
               clearTimeout(phoneConnectTimeout);
               phoneConnectTimeout = null;
             }
+            lastHeartbeatAck = Date.now();
             setPhoneStatus("connected");
             const devName = document.getElementById("phone-device-name").value.trim() || "Phone";
             try {
-              phoneConn.send({ type: "hello", deviceName: devName });
+              phoneConn.send({ type: "hello", clientId: getTransferClientId(), deviceName: devName });
             } catch (e) {}
             showToast(tr("laptopConnected" , [code]), "success");
             flushQueue();
@@ -1592,6 +1646,8 @@
 
           phoneConn.on("data", (msg) => {
             if (gen !== generation || !msg) return;
+            lastHeartbeatAck = Date.now();
+            if (msg.type === "heartbeatAck") return;
             const p = pendingAcks.get(msg.sessionId);
             if (!p || p.conn !== connection) return;
             if (["busy","reject","retry"].includes(msg.type) || (p.expected.includes(msg.type) && (msg.type !== "chunkAck" || msg.chunkIndex === p.index))) p.finish(msg.type + (msg.reason ? ":" + msg.reason : ""));
@@ -1654,7 +1710,7 @@
             } catch (e) {}
             if (isPhoneConnected && phoneConn) {
               try {
-                phoneConn.send({ type: "hello", deviceName: trimmed });
+                phoneConn.send({ type: "hello", clientId: getTransferClientId(), deviceName: trimmed });
               } catch (e) {}
             }
           });
@@ -2172,7 +2228,8 @@
           connectedDevices: "연결된 기기",
           receivedMediaTitle: "수신된 미디어 목록",
           receivedMediaDesc: "기기별로 필터링하거나 일괄 다운로드할 수 있습니다.",
-          downloadAllBtn: "전체 일괄 저장",
+          downloadAllBtn: "미저장 파일 일괄 저장",
+          extraCopy: "추가 다운로드", downloadRequested: "다운로드 요청됨 (저장 완료 미확인)", notSaved: "미저장", saveFailed: "저장 실패",
           laptopConnLabel: "노트북 연결",
           deviceNameLabel: "내 기기 이름 (구분용)",
           roomCodeLabel: "노트북 연결 코드",
@@ -2324,7 +2381,8 @@
           connectedDevices: "Connected Devices",
           receivedMediaTitle: "Received Media",
           receivedMediaDesc: "Filter by device or download all files at once.",
-          downloadAllBtn: "Save All",
+          downloadAllBtn: "Save unsaved files",
+          extraCopy: "Download copy", downloadRequested: "Download requested (not verified)", notSaved: "Not saved", saveFailed: "Save failed",
           laptopConnLabel: "Laptop Connection",
           deviceNameLabel: "My Device Name",
           roomCodeLabel: "Laptop Code",
