@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.2</span></h1>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.3</span></h1>
           <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
@@ -210,6 +210,10 @@
             </label>
           </div>
 
+          <div class="w-full text-left bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-3">
+            <button id="pc-pick-folder" type="button" class="w-full px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold" data-i18n="pickFolder">저장 폴더 선택</button>
+            <p id="pc-folder-status" class="text-[11px] text-slate-400 mt-2 break-all" data-i18n="folderNone"></p>
+          </div>
           <!-- 접속된 휴대폰 목록 -->
           <div class="w-full text-left mt-2">
             <div class="flex items-center justify-between mb-2">
@@ -707,6 +711,72 @@
         if (changed) renderActiveTransfers();
       }, 10000);
       const receivedVideos = [];
+      let pcFolder = null;
+      const diskWrites = new Set();
+      let diskReserved = 0;
+      const folderStatus = document.getElementById('pc-folder-status');
+      const folderButton = document.getElementById('pc-pick-folder');
+      if (typeof window.showDirectoryPicker !== 'function') {
+        folderButton.disabled = true;
+        localizeFolderLater();
+      }
+      function localizeFolderLater() { folderStatus.dataset.i18n = 'folderUnsupported'; }
+      folderButton.addEventListener('click', async () => {
+        try {
+          const folder = await window.showDirectoryPicker({mode:'readwrite'});
+          pcFolder = folder;
+          localize(folderStatus, 'folderSelected', [folder.name]);
+          document.getElementById('pc-auto-save').checked = true;
+        } catch (err) {
+          if (err.name !== 'AbortError') showToast(tr('folderError'), 'error');
+        }
+      });
+      async function saveToFolder(folder, name, blob) {
+        // Random suffix prevents overwriting files from earlier browser sessions.
+        const suffix = Array.from(crypto.getRandomValues(new Uint8Array(12)), x=>x.toString(16).padStart(2,'0')).join('');
+        const dot = name.lastIndexOf('.');
+        const actual = name.slice(0,dot) + '_' + suffix + name.slice(dot);
+        const handle = await folder.getFileHandle(actual, {create:true});
+        let writer;
+        try {
+          writer = await handle.createWritable();
+          await writer.write(blob);
+          await writer.close();
+          return {handle, name:actual};
+        } catch (err) {
+          if (writer) try { await writer.abort(); } catch (_) {}
+          throw err;
+        }
+      }
+      async function downloadRecord(v) {
+        if (v.url) return triggerDownload(v.url,v.fileName);
+        try {
+          const file = await v.handle.getFile();
+          const url = URL.createObjectURL(file);
+          triggerDownload(url,v.fileName);
+          setTimeout(()=>URL.revokeObjectURL(url),60000);
+        } catch (_) { showToast(tr('folderError'),'error'); }
+      }
+      async function previewRecord(v, card) {
+        try {
+          const file = await v.handle.getFile();
+          const url = URL.createObjectURL(file);
+          const media = document.createElement(v.mediaType === 'image' ? 'img' : 'video');
+          media.className = 'w-full aspect-video object-contain bg-black';
+          if (v.mediaType !== 'image') media.controls = true;
+          media.src = url;
+          const close = document.createElement('button');
+          close.className = 'text-xs p-2'; localize(close,'closePreview');
+          const cleanup = () => { media.removeAttribute('src'); media.remove(); close.remove(); URL.revokeObjectURL(url); };
+          close.onclick = cleanup;
+          // Revoke when the list is re-rendered, or when the user closes the preview.
+          if (!card.isConnected) { cleanup(); return; }
+          previewCleanups.add(cleanup);
+          close.onclick = () => { cleanup(); previewCleanups.delete(cleanup); };
+          card.prepend(media,close);
+        } catch (_) { showToast(tr('folderError'),'error'); }
+      }
+      const previewCleanups = new Set();
       let activeFilter = "ALL";
       let pcVideoCounter = 1;
       let currentPcRoomCode = "";
@@ -1074,13 +1144,14 @@
           if (typeof data.clientId !== "string" || !/^[a-zA-Z0-9_-]{1,100}$/.test(data.clientId)) return respond("reject");
           const transferKey = JSON.stringify([data.clientId, data.sessionId]);
           if (completedTransfers.has(transferKey)) return respond("ack");
+          if (diskWrites.has(transferKey)) return respond("busy", {reason:"disk"});
           const size = data.totalSize, count = data.totalChunks;
           if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_FILE || count !== Math.ceil(size / CHUNK_SIZE)) return respond("reject");
           const old = incomingSessions.get(key);
           if (old) incomingSessions.delete(key);
           const reserved = [...incomingSessions.values()].reduce((n,v)=>n+v.totalSize,0);
-          const retained = receivedVideos.reduce((n,v)=>n+v.size,0);
-          if (incomingSessions.size >= MAX_ACTIVE || reserved + retained + size > MAX_BYTES) return respond("busy", {reason:"capacity"});
+          const retained = receivedVideos.reduce((n,v)=>n+(v.blob ? v.size : 0),0);
+          if (incomingSessions.size + diskWrites.size >= MAX_ACTIVE || reserved + retained + diskReserved + size > MAX_BYTES) return respond("busy", {reason:"capacity"});
           const sender = connectedSenders.get(conn.peer);
           const deviceName = String(sender.deviceName || "Phone").slice(0,80);
           incomingSessions.set(key, {conn, transferKey, deviceName, originalFileName: String(data.fileName || "video.webm").slice(0,255), mimeType: String(data.mimeType || "video/webm").slice(0,100), totalSize:size, totalChunks:count, chunks:[], receivedCount:0, touched:Date.now()});
@@ -1116,7 +1187,6 @@
           const blob = new Blob(sess.chunks, {type:sess.mimeType});
           if (blob.size !== sess.totalSize) { incomingSessions.delete(key); renderActiveTransfers(); return respond("retry"); }
           sess.chunks.length = 0;
-          const url = URL.createObjectURL(blob);
           const seq = String(pcVideoCounter++).padStart(3, "0");
           const safeDev = sanitizeFileNamePart(sess.deviceName);
           const isImage = (sess.mimeType || "").startsWith("image/") || /\.(jpg|jpeg|png|webp|gif)$/i.test(sess.originalFileName || "");
@@ -1130,12 +1200,33 @@
             mediaType: isImage ? "image" : "video",
             deviceName: sess.deviceName,
             fileName,
-            url,
-            blob,
+            url: null,
+            blob: null,
             size: blob.size || sess.totalSize,
             timestamp
           };
 
+          const autoSaveEl = document.getElementById("pc-auto-save");
+          const folder = autoSaveEl?.checked ? pcFolder : null;
+          if (folder) {
+            if (diskWrites.has(sess.transferKey)) return respond('busy',{reason:'disk'});
+            diskWrites.add(sess.transferKey); diskReserved += blob.size;
+            incomingSessions.delete(key);
+            try {
+              const saved = await saveToFolder(folder,fileName,blob);
+              videoRecord.handle = saved.handle;
+              videoRecord.fileName = saved.name;
+            } catch (err) {
+              showToast(tr('folderError'),'error');
+              return respond('retry',{reason:'disk'});
+            } finally {
+              diskWrites.delete(sess.transferKey); diskReserved -= blob.size;
+              renderActiveTransfers();
+            }
+          } else {
+            videoRecord.url = URL.createObjectURL(blob);
+            videoRecord.blob = blob;
+          }
           receivedVideos.unshift(videoRecord);
           incomingSessions.delete(key);
           completedTransfers.set(sess.transferKey, true);
@@ -1144,9 +1235,8 @@
           renderFilterTabs();
           renderPcVideos();
 
-          const autoSaveEl = document.getElementById("pc-auto-save");
-          if (autoSaveEl && autoSaveEl.checked) {
-            triggerDownload(url, fileName);
+          if (!folder && autoSaveEl && autoSaveEl.checked) {
+            triggerDownload(videoRecord.url, fileName);
           }
 
 
@@ -1204,6 +1294,8 @@
       }
 
       function renderPcVideos() {
+        for (const cleanup of previewCleanups) cleanup();
+        previewCleanups.clear();
         const listEl = document.getElementById("pc-video-list");
         const btnAll = document.getElementById("btn-pc-download-all");
         const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
@@ -1221,7 +1313,7 @@
           const card = document.createElement("div");
           card.className = "bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden flex flex-col";
           const isImage = v.mediaType === "image" || (v.blob && v.blob.type && v.blob.type.startsWith("image/"));
-          const previewHtml = isImage
+          const previewHtml = !v.url ? `<div class="p-4 text-center text-emerald-300 text-xs" data-i18n="diskSaved">${tr("diskSaved")}</div>` : isImage
             ? `<img src="${v.url}" alt="${escapeHtml(v.fileName)}" class="w-full aspect-video object-cover bg-black" />`
             : `<video src="${v.url}" controls class="w-full aspect-video bg-black"></video>`;
           card.innerHTML = `
@@ -1237,11 +1329,17 @@
               </button>
             </div>
           `;
-          card.querySelector(".btn-dl").addEventListener("click", () => triggerDownload(v.url, v.fileName));
+          card.querySelector(".btn-dl").addEventListener("click", () => downloadRecord(v));
+          if (v.handle) {
+            const preview = document.createElement('button');
+            preview.className = 'text-xs text-cyan-300 p-2'; localize(preview,'openPreview');
+            preview.onclick = () => { preview.disabled = true; previewRecord(v,card).finally(()=>{preview.disabled=false;}); };
+            card.appendChild(preview);
+          }
           const release = document.createElement("button");
           release.className = "text-xs text-red-300 p-2";
           localize(release,"releaseMedia");
-          release.onclick = () => { if (!confirm(tr("releaseConfirm"))) return; URL.revokeObjectURL(v.url); receivedVideos.splice(receivedVideos.indexOf(v),1); renderFilterTabs(); renderPcVideos(); };
+          release.onclick = () => { if (!confirm(tr(v.handle ? "diskRemoveConfirm" : "releaseConfirm"))) return; if(v.url) URL.revokeObjectURL(v.url); receivedVideos.splice(receivedVideos.indexOf(v),1); renderFilterTabs(); renderPcVideos(); };
           card.appendChild(release);
           listEl.appendChild(card);
         });
@@ -1259,7 +1357,7 @@
       document.getElementById("btn-pc-download-all").addEventListener("click", () => {
         const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
         filtered.forEach((v, idx) => {
-          setTimeout(() => triggerDownload(v.url, v.fileName), idx * 300);
+          setTimeout(() => downloadRecord(v), idx * 300);
         });
       });
 
@@ -2008,6 +2106,15 @@
           transferRejected: "파일 크기 제한 초과 또는 잘못된 파일입니다. 원본은 유지됩니다.",
           transferRetry: "전송 지연 또는 실패: 원본 유지, 재시도합니다.",
           releaseMedia: "수신 목록에서 제거",
+          pickFolder: "저장 폴더 선택",
+          folderNone: "폴더 미선택: 기존 브라우저 다운로드 방식",
+          folderSelected: "저장 폴더: {0} (저장 확인 후 자동 메모리 해제)",
+          folderUnsupported: "이 브라우저는 폴더 저장을 지원하지 않습니다.",
+          folderError: "폴더 저장 또는 읽기 실패. 휴대폰 원본을 확인하세요.",
+          diskSaved: "디스크 저장 완료",
+          openPreview: "미리보기 열기",
+          closePreview: "미리보기 닫기",
+          diskRemoveConfirm: "목록만 제거합니다. 디스크 파일은 유지됩니다.",
           releaseConfirm: "파일을 저장했습니까? 목록에서 제거하면 다시 다운로드할 수 없습니다.",
           queued: "미연결 상태입니다. 대기열에 안전하게 저장되었습니다.",
           delete: "삭제",
@@ -2151,6 +2258,15 @@
           transferRejected: "File exceeds limit or is invalid. Original retained.",
           transferRetry: "Transfer delayed or failed. Original retained; retrying.",
           releaseMedia: "Remove received file",
+          pickFolder: "Choose save folder",
+          folderNone: "No folder selected: browser download mode",
+          folderSelected: "Save folder: {0} (release memory after confirmed save)",
+          folderUnsupported: "Folder saving is not supported in this browser.",
+          folderError: "Folder read/write failed. Check the phone original.",
+          diskSaved: "Saved to disk",
+          openPreview: "Open preview",
+          closePreview: "Close preview",
+          diskRemoveConfirm: "Remove from list only? Disk file is retained.",
           releaseConfirm: "Have you saved this file? Removing it prevents further downloads.",
           queued: "Disconnected. Saved safely to the queue.",
           delete: "Delete",
