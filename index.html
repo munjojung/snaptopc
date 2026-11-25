@@ -1,9 +1,2031 @@
-// =========================================================
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title data-i18n="appTitle">SnapToPC - 폰-노트북 영상 전송기</title>
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- PeerJS (WebRTC) -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Inline PWA Manifest -->
+  <link id="pwa-manifest" rel="manifest" href="" />
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Essential visibility must not depend on the Tailwind CDN. */
+    .hidden, [hidden] { display: none !important; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    #startup-error { margin: 1rem; padding: 1rem; border: 1px solid #f59e0b; border-radius: 12px; color: #fde68a; }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.7; }
+    }
+    .recording-dot {
+      animation: pulse-ring 1.2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- 상단 네비게이션 -->
+  <header class="w-full border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5 cursor-pointer" id="btn-home">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC</h1>
+          <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-lang-toggle" type="button" class="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition">
+          EN
+        </button>
+        <button id="btn-turn-settings" type="button" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+          <span id="turn-status-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+          <span data-i18n="turnBtn">외부망(TURN)</span>
+        </button>
+        <button id="btn-pwa-info" type="button" data-i18n="pwaBtn" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+          앱으로 설치 안내
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 컨테이너 -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 flex flex-col">
+
+    <!-- 1. 초기 모드 선택 화면 -->
+    <section id="view-select" class="flex-1 flex flex-col items-center justify-center py-8">
+      <div class="text-center max-w-lg mb-8">
+        <span data-i18n="heroBadge" class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 mb-3">
+          별도 서버 저장 없음 · WebRTC 직접 전송
+        </span>
+        <h2 data-i18n="heroTitle" class="text-2xl sm:text-3xl font-bold text-white mb-2">어떤 기기에서 사용하시나요?</h2>
+        <p data-i18n="heroDesc" class="text-sm text-slate-400">
+          여러 대의 휴대폰에서 촬영한 영상을 한 대의 노트북으로 모으고, 오프라인 시에는 휴대폰에 안전하게 임시 저장합니다.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
+        <!-- 노트북 (받기 모드) -->
+        <button id="btn-mode-pc" type="button" class="glass-card rounded-2xl p-6 text-left hover:border-indigo-500/60 hover:bg-slate-800/80 transition group flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 data-i18n="pcCardTitle" class="text-lg font-bold text-white mb-1">노트북 / PC (받기)</h3>
+            <p data-i18n="pcCardDesc" class="text-xs text-slate-400 leading-relaxed">
+              연결 코드와 QR을 생성하고 여러 휴대폰에서 보내는 영상을 기기별로 구분해 저장합니다.
+            </p>
+          </div>
+          <div class="mt-5 text-xs font-semibold text-indigo-400 flex items-center gap-1">
+            <span data-i18n="pcCardCta">수신 대기실 열기</span> <span>→</span>
+          </div>
+        </button>
+
+        <!-- 휴대폰 (보내기 모드) -->
+        <button id="btn-mode-phone" type="button" class="glass-card rounded-2xl p-6 text-left hover:border-cyan-500/60 hover:bg-slate-800/80 transition group flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 data-i18n="phoneCardTitle" class="text-lg font-bold text-white mb-1">휴대폰 (촬영 및 전송)</h3>
+            <p data-i18n="phoneCardDesc" class="text-xs text-slate-400 leading-relaxed">
+              노트북에 연결해 영상을 촬영·전송합니다. 연결이 끊겨도 대기열에 자동 저장됩니다.
+            </p>
+          </div>
+          <div class="mt-5 text-xs font-semibold text-cyan-400 flex items-center gap-1">
+            <span data-i18n="phoneCardCta">카메라 및 전송 시작</span> <span>→</span>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. 노트북 (수신 모드) 화면 -->
+    <section id="view-pc" class="hidden flex-col gap-5">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <!-- 좌측: 연결 정보 & QR -->
+        <div class="glass-card rounded-2xl p-5 flex flex-col items-center text-center">
+          <div class="w-full flex items-center justify-between mb-3">
+            <span data-i18n="connStatus" class="text-xs font-semibold text-slate-400">연결 상태</span>
+            <span id="pc-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300" data-i18n="ready">
+              준비 중...
+            </span>
+          </div>
+
+          <p data-i18n="pcCodePrompt" class="text-xs text-slate-400 mb-1">휴대폰에서 아래 코드를 입력하세요</p>
+          <div class="w-full flex flex-wrap items-center justify-center gap-2 mb-4">
+            <div id="pc-room-code" class="text-3xl font-extrabold tracking-[0.25em] text-white bg-slate-900/90 px-5 py-2.5 rounded-xl border border-slate-700 select-all">
+              Z9PZT
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="btn-edit-pc-code" type="button" data-i18n="editCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 border border-slate-700 transition" data-i18n-title="editTitle" title="연결 코드 변경">
+                코드 변경
+              </button>
+              <button id="btn-reset-pc-code" type="button" data-i18n="resetCodeBtn" class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-indigo-300 border border-slate-700 transition" data-i18n-title="resetTitle" title="기본 코드(Z9PZT)로 복원">
+                Z9PZT 복원
+              </button>
+            </div>
+          </div>
+
+          <div id="pc-code-editor" class="hidden w-full bg-slate-900/80 p-2.5 rounded-xl border border-slate-700 mb-4">
+            <div class="flex items-center gap-1.5">
+              <input
+                id="pc-custom-code-input"
+                type="text"
+                maxlength="8"
+                data-i18n-placeholder="codeExample" placeholder="예: Z9PZT"
+                class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white uppercase tracking-widest font-bold focus:outline-none focus:border-indigo-500"
+              />
+              <button id="btn-save-pc-code" type="button" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold whitespace-nowrap transition" data-i18n="applyCode">
+                적용
+              </button>
+              <button id="btn-random-pc-code" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold whitespace-nowrap transition" data-i18n="randomCode">
+                랜덤
+              </button>
+            </div>
+          </div>
+
+          <div id="pc-qrcode" class="bg-white p-3 rounded-xl mb-4 shadow-inner"></div>
+
+          <p id="pc-turn-qr-notice" class="hidden text-[11px] text-amber-300 mb-3" data-i18n="turnQrNotice"></p>
+          <!-- QR 접속용 주소(호스트/URL) 지정 -->
+          <div class="w-full text-left bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-3">
+            <div class="flex items-center justify-between mb-1">
+              <label for="pc-qr-base-url" class="text-[11px] font-semibold text-slate-300" data-i18n="qrAddress">QR 접속용 주소 (호스트/URL)</label>
+              <div class="flex items-center gap-2">
+                <button id="btn-detect-local-ip" type="button" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium" data-i18n="detectIP">
+                  IP 자동 감지
+                </button>
+                <button id="btn-reset-qr-url" type="button" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium" data-i18n="resetQR">
+                  현재 주소로 초기화
+                </button>
+              </div>
+            </div>
+            <input
+              id="pc-qr-base-url"
+              type="text"
+              data-i18n-placeholder="urlExample" placeholder="예: https://munjojung.github.io/snaptopc/"
+              class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[11px] text-slate-100 focus:outline-none focus:border-indigo-500"
+            />
+            <p id="pc-detected-ip-info" class="hidden text-[10px] text-cyan-400 mt-1 leading-snug"></p>
+            <p id="pc-qr-url-warning" class="hidden text-[10px] text-amber-400 mt-1 leading-snug" data-i18n="qrWarning">
+              현재 주소가 127.0.0.1/localhost입니다. 휴대폰 사파리 접속을 위해 노트북 IP 또는 HTTPS 주소를 입력하세요.
+            </p>
+          </div>
+
+          <div class="w-full flex items-center justify-between bg-slate-900/60 px-3.5 py-2.5 rounded-xl border border-slate-800 mb-3">
+            <span data-i18n="autoSaveLabel" class="text-xs text-slate-300 font-medium">수신 완료 시 자동 저장</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="pc-auto-save" class="sr-only peer" checked />
+              <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+            </label>
+          </div>
+
+          <!-- 접속된 휴대폰 목록 -->
+          <div class="w-full text-left mt-2">
+            <div class="flex items-center justify-between mb-2">
+              <span data-i18n="connectedDevices" class="text-xs font-semibold text-slate-300">연결된 기기</span>
+              <span id="pc-device-count" class="text-xs text-indigo-400 font-bold" data-i18n="zeroDevices">0대</span>
+            </div>
+            <div id="pc-connected-devices" class="space-y-1.5 max-h-36 overflow-y-auto text-xs">
+              <p class="text-slate-500 text-center py-2" data-i18n="noDevices">아직 연결된 휴대폰이 없습니다.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 우측: 수신 진행률 & 영상 목록 -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+          <!-- 현재 수신 중인 전송 카드 -->
+          <div id="pc-active-transfers" class="space-y-2 hidden"></div>
+
+          <!-- 수신된 영상 목록 헤더 -->
+          <div class="glass-card rounded-2xl p-5 flex-1 flex flex-col">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 data-i18n="receivedMediaTitle" class="text-base font-bold text-white">수신된 미디어 목록</h3>
+                <p data-i18n="receivedMediaDesc" class="text-xs text-slate-400">기기별로 필터링하거나 일괄 다운로드할 수 있습니다.</p>
+              </div>
+              <button id="btn-pc-download-all" type="button" data-i18n="downloadAllBtn" class="hidden px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-500/20">
+                전체 일괄 저장
+              </button>
+            </div>
+
+            <!-- 기기 필터 탭 -->
+            <div id="pc-filter-tabs" class="flex flex-wrap gap-1.5 mb-4">
+              <button type="button" data-filter="ALL" class="filter-tab px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-600 text-white" data-i18n="all">전체</button>
+            </div>
+
+            <!-- 미디어 리스트 -->
+            <div id="pc-video-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 content-start">
+              <div class="col-span-full text-center py-12 text-slate-500 text-sm" data-i18n="emptyMedia">
+                휴대폰에서 영상이나 사진을 촬영해 전송하면 이곳에 표시됩니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 휴대폰 (촬영 및 전송 모드) 화면 -->
+    <section id="view-phone" class="hidden flex-col gap-4 max-w-xl mx-auto w-full">
+      <!-- 연결 설정 카드 -->
+      <div class="glass-card rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span data-i18n="laptopConnLabel" class="text-xs font-semibold text-slate-300">노트북 연결</span>
+          <span id="phone-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-700 text-slate-300">
+            미연결 (오프라인 저장 모드)
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
+          <div>
+            <label data-i18n="deviceNameLabel" class="block text-[11px] text-slate-400 mb-1">내 기기 이름 (구분용)</label>
+            <input id="phone-device-name" type="text" maxlength="16" data-i18n-placeholder="nameExample" placeholder="예: 철수-폰" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-500" />
+          </div>
+          <div>
+            <label data-i18n="roomCodeLabel" class="block text-[11px] text-slate-400 mb-1">노트북 연결 코드</label>
+            <div class="flex gap-1.5">
+              <input id="phone-room-input" type="text" maxlength="8" placeholder="Z9PZT" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white uppercase tracking-widest font-bold focus:outline-none focus:border-cyan-500" />
+              <button id="btn-phone-connect" type="button" data-i18n="connectBtn" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold whitespace-nowrap transition">
+                연결
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 카메라 프리뷰 & 촬영 컨트롤 -->
+      <div class="glass-card rounded-2xl p-4 flex flex-col gap-3">
+        <div class="relative w-full aspect-[4/3] sm:aspect-video bg-black rounded-xl overflow-hidden flex items-center justify-center">
+          <video id="phone-preview" autoplay muted playsinline class="w-full h-full object-cover"></video>
+
+          <!-- 녹화 타이머 -->
+          <div id="phone-rec-badge" class="hidden absolute top-3 left-3 px-3 py-1 rounded-full bg-red-600/90 text-white text-xs font-bold flex items-center gap-1.5 shadow">
+            <span class="w-2 h-2 rounded-full bg-white recording-dot"></span>
+            <span id="phone-rec-timer">00:00</span>
+          </div>
+
+          <!-- 카메라 전환 버튼 -->
+          <button id="btn-switch-cam" type="button" class="absolute top-3 right-3 p-2.5 rounded-full bg-slate-900/75 hover:bg-slate-800 text-white border border-white/15 backdrop-blur transition" data-i18n-title="camTitle" title="전/후면 카메라 전환">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 촬영 / 사진 / 파일 선택 버튼 -->
+        <div class="grid grid-cols-3 gap-2">
+          <button id="btn-record" type="button" class="w-full py-3.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span>
+            <span data-i18n="startRecBtn">촬영 시작</span>
+          </button>
+          <button id="btn-capture-photo" type="button" class="w-full py-3.5 px-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span data-i18n="takePhotoBtn">사진 찍기</span>
+          </button>
+          <label class="w-full py-3.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold cursor-pointer border border-slate-700 transition flex items-center justify-center whitespace-nowrap">
+            <span data-i18n="galleryBtn">갤러리 선택</span>
+            <input id="phone-file-input" type="file" accept="video/*,image/*" multiple class="hidden" />
+          </label>
+        </div>
+
+        <!-- 내 기기에도 저장 옵션 -->
+        <div class="flex items-center justify-between bg-slate-900/60 px-3.5 py-2.5 rounded-xl border border-slate-800">
+          <div>
+            <span data-i18n="saveLocalLabel" class="text-xs text-slate-200 font-medium block">내 기기에도 저장</span>
+            <span data-i18n="saveLocalDesc" class="text-[10px] text-slate-400">촬영/선택한 영상을 휴대폰 다운로드 폴더에도 보관합니다.</span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="phone-save-local" class="sr-only peer" />
+            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+          </label>
+        </div>
+
+        <!-- 현재 전송 진행률 -->
+        <div id="phone-upload-progress-box" class="hidden bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span id="phone-upload-label" class="text-cyan-300 font-medium" data-i18n="uploading">전송 중...</span>
+            <span id="phone-upload-percent" class="text-white font-bold">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="phone-upload-bar" class="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 오프라인 전송 대기열 (IndexedDB) -->
+      <div class="glass-card rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 data-i18n="queueTitle" class="text-sm font-bold text-white">전송 대기열 (오프라인 임시 저장)</h3>
+            <p data-i18n="queueDesc" class="text-[11px] text-slate-400">미연결 시 이곳에 저장되며, 연결되면 자동 전송됩니다.</p>
+          </div>
+          <button id="btn-flush-queue" type="button" data-i18n="sendNowBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-300 border border-slate-700 transition">
+            지금 전송
+          </button>
+        </div>
+        <div id="phone-queue-list" class="space-y-2 text-xs">
+          <p class="text-slate-500 text-center py-4" data-i18n="emptyQueue">대기 중인 영상이 없습니다.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- PWA 설치 안내 모달 -->
+  <div id="pwa-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="glass-card rounded-2xl max-w-md w-full p-6">
+      <h3 class="text-lg font-bold text-white mb-2" data-i18n="pwaTitle">홈 화면에 앱으로 설치하기</h3>
+      <p class="text-xs text-slate-300 leading-relaxed mb-4" data-i18n="pwaDesc">
+        이 페이지는 PWA(Progressive Web App)를 지원합니다. 홈 화면에 추가하면 일반 앱처럼 전체 화면으로 빠르게 실행할 수 있습니다.
+      </p>
+      <ul class="text-xs text-slate-300 space-y-2 mb-5 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+        <li>• <strong data-i18n="pwaAndroid">안드로이드 (Chrome):</strong> <span data-i18n="pwaAndroidMenu">우측 상단 메뉴(⋮) →</span> <em data-i18n="pwaAddHome">홈 화면에 추가</em> <span data-i18n="pwaOr">또는</span> <em data-i18n="pwaInstall">앱 설치</em></li>
+        <li>• <strong data-i18n="pwaIos">아이폰 (Safari):</strong> <span data-i18n="pwaIosMenu">하단 공유 버튼(□↑) →</span> <em data-i18n="pwaAddHome">홈 화면에 추가</em></li>
+        <li>• <strong data-i18n="pwaDesktop">노트북 (Chrome/Edge):</strong> <span data-i18n="pwaDesktopMenu">주소창 우측 설치 아이콘 클릭</span></li>
+      </ul>
+      <button id="btn-close-pwa" type="button" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition" data-i18n="pwaOk">
+        확인
+      </button>
+    </div>
+  </div>
+
+  <!-- 외부망(TURN) 설정 모달 -->
+  <div id="turn-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="glass-card rounded-2xl max-w-md w-full p-6">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-lg font-bold text-white" data-i18n="turnTitle">외부망(TURN) 설정</h3>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="turn-enabled" class="sr-only peer" />
+          <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+        </label>
+      </div>
+      <p class="text-xs text-slate-400 leading-relaxed mb-4" data-i18n="turnDesc">
+        모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 설정은 내 브라우저에 저장되며, 활성화하면 QR을 통해 휴대폰에 인증 정보가 전달됩니다.
+      </p>
+
+      <div class="space-y-3 mb-5">
+        <div>
+          <label for="turn-url" class="block text-[11px] font-semibold text-slate-300 mb-1" data-i18n="turnUrlLabel">TURN 서버 주소 (URL, 여러 개는 쉼표로 구분)</label>
+          <input id="turn-url" type="text" data-i18n-placeholder="turnUrlPlaceholder" placeholder="예: turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div>
+          <label for="turn-username" class="block text-[11px] font-semibold text-slate-300 mb-1" data-i18n="turnUserLabel">사용자 이름 (Username)</label>
+          <input id="turn-username" type="text" data-i18n-placeholder="turnUserPlaceholder" placeholder="발급받은 Username" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div>
+          <label for="turn-credential" class="block text-[11px] font-semibold text-slate-300 mb-1" data-i18n="turnCredentialLabel">비밀번호 (Credential)</label>
+          <input id="turn-credential" type="password" data-i18n-placeholder="turnCredentialPlaceholder" placeholder="발급받은 Credential" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500" />
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="btn-clear-turn" type="button" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition" data-i18n="turnClear">
+          초기화
+        </button>
+        <button id="btn-close-turn" type="button" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition" data-i18n="turnClose">
+          닫기
+        </button>
+        <button id="btn-save-turn" type="button" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition" data-i18n="turnSave">
+          저장 및 적용
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 컨테이너 -->
+  <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none"></div>
+
+  <div id="startup-error" hidden role="alert">페이지 초기화 실패. Chrome 또는 Safari에서 HTTPS 주소를 다시 열어 주세요. / Initialization failed. Reopen the HTTPS address in Chrome or Safari.</div>
+  <noscript>JavaScript를 활성화해 주세요. / Please enable JavaScript.</noscript>
+  <script>
+    (function () {
+      try {
+      // =========================================================
+      // 1. PWA 인라인 Manifest 등록
+      // =========================================================
+      try {
+        const manifest = {
+          name: "SnapToPC",
+          short_name: "SnapToPC",
+          start_url: ".",
+          display: "standalone",
+          background_color: "#0f172a",
+          theme_color: "#0f172a",
+          icons: [
+            {
+              src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Cpath d='M25 35h35a5 5 0 015 5v20a5 5 0 01-5 5H25a5 5 0 01-5-5V40a5 5 0 015-5zm42 10l13-7v24l-13-7V45z' fill='white'/%3E%3C/svg%3E",
+              sizes: "192x192",
+              type: "image/svg+xml"
+            }
+          ]
+        };
+        const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+        document.getElementById("pwa-manifest").setAttribute("href", URL.createObjectURL(blob));
+      } catch (e) {
+        console.warn("Manifest init skipped", e);
+      }
+
+      // =========================================================
+      // 2. 공통 유틸리티 & 토스트 알림
+      // =========================================================
+      const CHUNK_SIZE = 64 * 1024; // 64KB 청크
+      const PEER_PREFIX = "snap2pc-";
+      const DEFAULT_PC_ROOM_CODE = "Z9PZT";
+      const PC_CODE_STORAGE_KEY = "snap2pc_fixed_pc_code";
+      const CANVAS_RELAY_CHANNEL_PREFIX = "snap2pc_canvas_relay_";
+      const TURN_STORAGE_KEY = "snap2pc_turn_config";
+      const DEFAULT_ICE_SERVERS = [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" }
+      ];
+      let sessionTurnConfig = null;
+
+      function getSavedTurnConfig() {
+        try {
+          const raw = localStorage.getItem(TURN_STORAGE_KEY);
+          if (!raw) return { enabled: false, url: "", username: "", credential: "" };
+          const parsed = JSON.parse(raw);
+          return {
+            enabled: Boolean(parsed && parsed.enabled),
+            url: String((parsed && parsed.url) || "").trim(),
+            username: String((parsed && parsed.username) || "").trim(),
+            credential: String((parsed && parsed.credential) || "").trim()
+          };
+        } catch (e) {
+          return { enabled: false, url: "", username: "", credential: "" };
+        }
+      }
+
+      function encodeTurnParam(cfg) {
+        try {
+          const json = JSON.stringify({
+            u: cfg.url,
+            n: cfg.username,
+            c: cfg.credential
+          });
+          return btoa(unescape(encodeURIComponent(json)));
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function decodeTurnParam(token) {
+        try {
+          const json = decodeURIComponent(escape(atob(token)));
+          const parsed = JSON.parse(json);
+          if (parsed && parsed.u) {
+            return {
+              enabled: true,
+              url: String(parsed.u || "").trim(),
+              username: String(parsed.n || "").trim(),
+              credential: String(parsed.c || "").trim()
+            };
+          }
+        } catch (e) {}
+        return null;
+      }
+
+      function showView(viewName) {
+        const views = ["select", "pc", "phone"];
+        views.forEach((name) => {
+          const el = document.getElementById(`view-${name}`);
+          if (!el) return;
+          if (name === viewName) {
+            el.classList.remove("hidden");
+            el.classList.add("flex");
+          } else {
+            el.classList.add("hidden");
+            el.classList.remove("flex");
+          }
+        });
+
+        const turnBtn = document.getElementById("btn-turn-settings");
+        if (turnBtn) {
+          if (viewName === "phone") {
+            turnBtn.classList.add("hidden");
+          } else {
+            turnBtn.classList.remove("hidden");
+          }
+        }
+      }
+
+      function updateTurnStatusIndicator() {
+        const dot = document.getElementById("turn-status-dot");
+        if (!dot) return;
+        const cfg = getSavedTurnConfig();
+        if (cfg.enabled && cfg.url) {
+          dot.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]";
+        } else {
+          dot.className = "w-2 h-2 rounded-full bg-slate-500";
+        }
+      }
+
+      function getPeerConfig(useSession = true) {
+        const iceServers = [...DEFAULT_ICE_SERVERS];
+        const cfg = (useSession && sessionTurnConfig) || getSavedTurnConfig();
+        if (cfg.enabled && cfg.url) {
+          const urls = cfg.url
+            .split(",")
+            .map((u) => u.trim())
+            .filter(Boolean);
+          if (urls.length > 0) {
+            const turnEntry = { urls: urls.length === 1 ? urls[0] : urls };
+            if (cfg.username) turnEntry.username = cfg.username;
+            if (cfg.credential) turnEntry.credential = cfg.credential;
+            iceServers.push(turnEntry);
+          }
+        }
+        return {
+          config: {
+            iceServers
+          }
+        };
+      }
+
+      function showToast(msg, type = "info") {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+        const el = document.createElement("div");
+        const colors = {
+          info: "bg-slate-800 border-slate-700 text-slate-100",
+          success: "bg-emerald-900/90 border-emerald-700 text-emerald-100",
+          error: "bg-red-900/90 border-red-700 text-red-100"
+        };
+        el.className = `px-4 py-2.5 rounded-xl border text-xs font-medium shadow-xl backdrop-blur transition-all duration-300 text-center ${colors[type] || colors.info}`;
+        el.textContent = msg;
+        container.appendChild(el);
+        setTimeout(() => {
+          el.style.opacity = "0";
+          setTimeout(() => el.remove(), 300);
+        }, 3000);
+      }
+
+      function formatBytes(bytes) {
+        if (!bytes) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+      }
+
+      function generateRoomCode() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let code = "";
+        for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+        return code;
+      }
+
+      function normalizeRoomCode(rawCode) {
+        return String(rawCode || "")
+          .toUpperCase()
+          .replace(/[^A-Z0-9_-]/g, "")
+          .slice(0, 8);
+      }
+
+      function getSavedPcRoomCode() {
+        try {
+          const saved = normalizeRoomCode(localStorage.getItem(PC_CODE_STORAGE_KEY) || "");
+          return saved || DEFAULT_PC_ROOM_CODE;
+        } catch (e) {
+          return DEFAULT_PC_ROOM_CODE;
+        }
+      }
+
+      function savePcRoomCode(code) {
+        try {
+          localStorage.setItem(PC_CODE_STORAGE_KEY, code);
+        } catch (e) {
+          console.warn("Failed to save PC room code:", e);
+        }
+      }
+
+      document.getElementById("btn-home").addEventListener("click", () => {
+        showView("select");
+      });
+
+      // =========================================================
+      // 3. IndexedDB 오프라인 전송 대기열 관리
+      // =========================================================
+      const DB_NAME = "SnapToPC_QueueDB";
+      const STORE_NAME = "pendingVideos";
+
+      function openQueueDB() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME, { keyPath: "id" });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async function addToQueueDB(item) {
+        const db = await openQueueDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          tx.objectStore(STORE_NAME).put(item);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      async function getAllQueueDB() {
+        const db = await openQueueDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, "readonly");
+          const req = tx.objectStore(STORE_NAME).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async function removeFromQueueDB(id) {
+        const db = await openQueueDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          tx.objectStore(STORE_NAME).delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+
+      // =========================================================
+      // 4. 노트북 (수신 모드) 로직
+      // =========================================================
+      let pcPeer = null;
+      const connectedSenders = new Map();
+      const incomingSessions = new Map();
+      const completedTransfers = new Map();
+      const MAX_ACTIVE = 3, MAX_FILE = 256 * 1024 * 1024, MAX_BYTES = 512 * 1024 * 1024;
+      const SESSION_IDLE = 60000;
+      const sessionKey = (conn, id) => JSON.stringify([conn.peer, id]);
+      const reply = (conn, data) => { try { conn.send(data); } catch (_) {} };
+      function dropSessions(conn) {
+        for (const [key, sess] of incomingSessions) if (sess.conn === conn) incomingSessions.delete(key);
+        renderActiveTransfers();
+      }
+      setInterval(() => {
+        let changed = false;
+        for (const [key, sess] of incomingSessions) if (Date.now() - sess.touched > SESSION_IDLE) { incomingSessions.delete(key); changed = true; }
+        if (changed) renderActiveTransfers();
+      }, 10000);
+      const receivedVideos = [];
+      let activeFilter = "ALL";
+      let pcVideoCounter = 1;
+      let currentPcRoomCode = "";
+      let userManuallyEditedQrUrl = false;
+
+      function getDefaultPcBaseUrl() {
+        return `${window.location.origin}${window.location.pathname}`;
+      }
+
+      function isPrivateOrLanIPv4(ip) {
+        if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return false;
+        if (ip === "127.0.0.1" || ip.startsWith("169.254.") || ip === "0.0.0.0") return false;
+        const parts = ip.split(".").map(Number);
+        if (parts.some((n) => n < 0 || n > 255)) return false;
+        if (parts[0] === 192 && parts[1] === 168) return true;
+        if (parts[0] === 10) return true;
+        if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+        return false;
+      }
+
+      async function detectLocalIPv4() {
+        return new Promise((resolve) => {
+          const foundIPs = new Set();
+          let resolved = false;
+
+          const finish = () => {
+            if (resolved) return;
+            resolved = true;
+            const list = Array.from(foundIPs);
+            const lanIp =
+              list.find((ip) => ip.startsWith("192.168.") || ip.startsWith("10.") || /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) ||
+              list[0] ||
+              null;
+            resolve(lanIp);
+          };
+
+          try {
+            const RTCPeerConn = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+            if (!RTCPeerConn) {
+              finish();
+              return;
+            }
+
+            const pc = new RTCPeerConn({ iceServers: [] });
+            pc.createDataChannel("ip-detect");
+
+            pc.onicecandidate = (event) => {
+              if (!event || !event.candidate || !event.candidate.candidate) {
+                finish();
+                return;
+              }
+              const cand = event.candidate.candidate;
+              const ipv4Matches = cand.match(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/g) || [];
+              ipv4Matches.forEach((ip) => {
+                if (isPrivateOrLanIPv4(ip)) {
+                  foundIPs.add(ip);
+                }
+              });
+            };
+
+            pc.createOffer()
+              .then((offer) => pc.setLocalDescription(offer))
+              .catch(() => finish());
+
+            setTimeout(() => {
+              try { pc.close(); } catch (e) {}
+              finish();
+            }, 1200);
+          } catch (e) {
+            finish();
+          }
+        });
+      }
+
+      function buildUrlWithDetectedIp(detectedIp) {
+        const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+        const port = window.location.port ? `:${window.location.port}` : "";
+        const pathname = window.location.pathname || "/";
+        return `${protocol}//${detectedIp}${port}${pathname}`;
+      }
+
+      async function applyAutoDetectedQrUrl(forceApply = false) {
+        const inputEl = document.getElementById("pc-qr-base-url");
+        const infoEl = document.getElementById("pc-detected-ip-info");
+        if (!inputEl) return null;
+
+        const ip = await detectLocalIPv4();
+        if (ip) {
+          const candidateUrl = buildUrlWithDetectedIp(ip);
+          if (infoEl) {
+            localize(infoEl, "ipFound", [ip]);
+            infoEl.classList.remove("hidden");
+          }
+          if (forceApply || (!userManuallyEditedQrUrl && isLocalhostUrl(inputEl.value))) {
+            inputEl.value = candidateUrl;
+            if (currentPcRoomCode) {
+              renderPcQrCode(currentPcRoomCode);
+            }
+          }
+          return ip;
+        } else {
+          if (infoEl) {
+            localize(infoEl, "ipHidden");
+            infoEl.classList.remove("hidden");
+          }
+          return null;
+        }
+      }
+
+      function isLocalhostUrl(urlStr) {
+        try {
+          const parsed = new URL(urlStr);
+          return parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost" || parsed.hostname === "::1";
+        } catch (e) {
+          return /127\.0\.0\.1|localhost/.test(urlStr);
+        }
+      }
+
+      function buildPcQrUrl(baseUrl, roomCode, cfg) {
+        const parsed = new URL(baseUrl);
+        if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('Invalid URL');
+        parsed.searchParams.set('room', roomCode);
+        parsed.searchParams.delete('turn');
+        const fragment = new URLSearchParams(parsed.hash.slice(1));
+        fragment.delete('turn');
+        if (cfg.enabled && cfg.url) {
+          const token = encodeTurnParam(cfg);
+          if (!token) throw new Error('TURN encoding failed');
+          fragment.set('turn', token);
+        }
+        parsed.hash = fragment.toString();
+        return parsed.toString();
+      }
+
+      function renderPcQrCode(roomCode) {
+        const qrEl = document.getElementById("pc-qrcode");
+        const inputEl = document.getElementById("pc-qr-base-url");
+        const warnEl = document.getElementById("pc-qr-url-warning");
+        if (!qrEl || !inputEl || !roomCode) return;
+
+        const cfg = getSavedTurnConfig();
+        const withTurn = Boolean(cfg.enabled && cfg.url);
+        const notice = document.getElementById('pc-turn-qr-notice');
+        qrEl.innerHTML = '';
+        notice.classList.add('hidden');
+        let baseUrl;
+        try {
+          baseUrl = buildPcQrUrl((inputEl.value || '').trim() || getDefaultPcBaseUrl(), roomCode, cfg);
+          if (typeof QRCode !== 'function') throw new Error('QR library unavailable');
+          const size = withTurn ? Math.min(256, Math.max(150, qrEl.parentElement.clientWidth - 48)) : 150;
+          new QRCode(qrEl, {
+            text: baseUrl, width: size, height: size,
+            colorDark: '#0f172a', colorLight: '#ffffff',
+            correctLevel: withTurn ? QRCode.CorrectLevel.M : QRCode.CorrectLevel.H
+          });
+          if (withTurn) {
+            localize(notice, 'turnQrNotice');
+            notice.classList.remove('hidden');
+          }
+        } catch (e) {
+          qrEl.innerHTML = '';
+          const msg = document.createElement('p');
+          msg.className = 'text-xs text-red-700 max-w-[220px]';
+          localize(msg, 'turnQrError');
+          qrEl.appendChild(msg);
+          return;
+        }
+
+        try {
+          localStorage.setItem("snap2pc_qr_base_url", (inputEl.value || "").trim());
+        } catch (e) {}
+
+        if (warnEl) {
+          if (isLocalhostUrl(baseUrl)) {
+            warnEl.classList.remove("hidden");
+          } else {
+            warnEl.classList.add("hidden");
+          }
+        }
+      }
+
+      function applyPcRoomCode(rawCode, options = {}) {
+        const normalized = normalizeRoomCode(rawCode);
+        if (!normalized) {
+          showToast(tr("invalidCode"), "error");
+          return;
+        }
+
+        currentPcRoomCode = normalized;
+        savePcRoomCode(normalized);
+        document.getElementById("pc-room-code").textContent = normalized;
+        document.getElementById("pc-custom-code-input").value = normalized;
+        if (options.hideEditor) {
+          document.getElementById("pc-code-editor").classList.add("hidden");
+        }
+        renderPcQrCode(normalized);
+        bindPcPeer(normalized);
+      }
+
+      function initPcMode() {
+        showView("pc");
+
+        const roomCode = currentPcRoomCode || getSavedPcRoomCode();
+        currentPcRoomCode = roomCode;
+        document.getElementById("pc-room-code").textContent = roomCode;
+        document.getElementById("pc-custom-code-input").value = roomCode;
+
+        const qrInputEl = document.getElementById("pc-qr-base-url");
+        let savedQrBase = "";
+        try {
+          savedQrBase = localStorage.getItem("snap2pc_qr_base_url") || "";
+        } catch (e) {}
+
+        if (!qrInputEl.value) {
+          qrInputEl.value = savedQrBase || getDefaultPcBaseUrl();
+          userManuallyEditedQrUrl = Boolean(savedQrBase);
+        }
+
+        renderPcQrCode(roomCode);
+
+        if (!userManuallyEditedQrUrl && isLocalhostUrl(qrInputEl.value)) {
+          applyAutoDetectedQrUrl(false);
+        }
+
+        if (!pcPeer || pcPeer.destroyed) {
+          bindPcPeer(roomCode);
+        }
+      }
+
+      function bindPcPeer(roomCode) {
+        const statusBadge = document.getElementById("pc-status-badge");
+        localize(statusBadge, "phoneStatusConnecting");
+        statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300";
+
+        if (pcPeer) {
+          try {
+            pcPeer.destroy();
+          } catch (e) {}
+          pcPeer = null;
+        }
+        connectedSenders.clear();
+        incomingSessions.clear();
+        renderActiveTransfers();
+        renderConnectedDevices();
+
+        if (typeof Peer !== "function") {
+          localize(statusBadge, "peerFail");
+          statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
+          showToast(tr("peerNetwork"), "error");
+          return;
+        }
+
+        try {
+          pcPeer = new Peer(PEER_PREFIX + roomCode, getPeerConfig(false));
+        } catch (err) {
+          console.warn("Peer init fallback:", err);
+          localize(statusBadge, "relayWait");
+          statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/20 text-cyan-300";
+          return;
+        }
+
+        pcPeer.on("open", () => {
+          localize(statusBadge, "receiveWait");
+          statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300";
+          showToast(tr("codeReady" , [roomCode]), "success");
+        });
+
+        pcPeer.on("error", (err) => {
+          console.error("PC Peer error:", err);
+          const isTaken = err && err.type === "unavailable-id";
+          localize(statusBadge, isTaken ? "codeTaken" : "connError");
+          statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-300";
+          showToast(
+            isTaken
+              ? tr("codeTakenMsg" , [roomCode])
+              : tr("signalFail"),
+            "error"
+          );
+        });
+
+        pcPeer.on("connection", (conn) => {
+          conn.on("open", () => {
+            connectedSenders.set(conn.peer, { conn, deviceName: "", unnamed: true });
+            renderConnectedDevices();
+          });
+
+          conn.on("data", (data) => handlePcData(conn, data));
+
+          conn.on("close", () => {
+            if (connectedSenders.get(conn.peer)?.conn === conn) connectedSenders.delete(conn.peer);
+            dropSessions(conn);
+            renderConnectedDevices();
+          });
+
+          conn.on("error", () => {
+            if (connectedSenders.get(conn.peer)?.conn === conn) connectedSenders.delete(conn.peer);
+            dropSessions(conn);
+            renderConnectedDevices();
+          });
+        });
+      }
+
+      function renderConnectedDevices() {
+        const listEl = document.getElementById("pc-connected-devices");
+        const countEl = document.getElementById("pc-device-count");
+        if (!listEl || !countEl) return;
+
+        localize(countEl, "deviceCount", [connectedSenders.size]);
+        if (connectedSenders.size === 0) {
+          listEl.innerHTML = `<p class="text-slate-500 text-center py-2"><span data-i18n="noDevices">${tr("noDevices")}</span></p>`;
+          return;
+        }
+
+        listEl.innerHTML = "";
+        connectedSenders.forEach((sender) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between bg-slate-900/70 px-3 py-2 rounded-lg border border-slate-800";
+          row.innerHTML = `
+            <span class="text-slate-200 font-medium truncate">${escapeHtml(sender.unnamed && !sender.deviceName ? tr("unnamed") : sender.deviceName)}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold shrink-0"><span data-i18n="connected">${tr("connected")}</span></span>
+          `;
+          listEl.appendChild(row);
+        });
+      }
+
+      function sanitizeFileNamePart(str) {
+        return String(str || "device")
+          .trim()
+          .replace(/[^a-zA-Z0-9가-힣_-]/g, "_")
+          .replace(/_+/g, "_")
+          .slice(0, 24) || "device";
+      }
+
+      function formatTimestampForFile() {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      }
+
+      function escapeHtml(value) { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+      function handlePcData(conn, data) {
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "hello") {
+          const devName = String(data.deviceName || "Phone").trim() || "Phone";
+          const current = connectedSenders.get(conn.peer) || { conn };
+          connectedSenders.set(conn.peer, { ...current, deviceName: devName });
+          renderConnectedDevices();
+          showToast(tr("deviceConnected" , [devName]), "info");
+          return;
+        }
+
+        if (connectedSenders.get(conn.peer)?.conn !== conn || typeof data.sessionId !== "string" || data.sessionId.length > 128) return;
+        const key = sessionKey(conn, data.sessionId);
+        const respond = (type, extra = {}) => reply(conn, {type, sessionId: data.sessionId, ...extra});
+        if (data.type === "meta") {
+          if (typeof data.clientId !== "string" || !/^[a-zA-Z0-9_-]{1,100}$/.test(data.clientId)) return respond("reject");
+          const transferKey = JSON.stringify([data.clientId, data.sessionId]);
+          if (completedTransfers.has(transferKey)) return respond("ack");
+          const size = data.totalSize, count = data.totalChunks;
+          if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_FILE || count !== Math.ceil(size / CHUNK_SIZE)) return respond("reject");
+          const old = incomingSessions.get(key);
+          if (old) incomingSessions.delete(key);
+          const reserved = [...incomingSessions.values()].reduce((n,v)=>n+v.totalSize,0);
+          const retained = receivedVideos.reduce((n,v)=>n+v.size,0);
+          if (incomingSessions.size >= MAX_ACTIVE || reserved + retained + size > MAX_BYTES) return respond("busy");
+          const sender = connectedSenders.get(conn.peer);
+          const deviceName = String(sender.deviceName || "Phone").slice(0,80);
+          incomingSessions.set(key, {conn, transferKey, deviceName, originalFileName: String(data.fileName || "video.webm").slice(0,255), mimeType: String(data.mimeType || "video/webm").slice(0,100), totalSize:size, totalChunks:count, chunks:[], receivedCount:0, touched:Date.now()});
+          renderActiveTransfers();
+          return respond("ready");
+        }
+        const sess = incomingSessions.get(key);
+        if (!sess || sess.conn !== conn) return respond("retry");
+        sess.touched = Date.now();
+        if (data.type === "chunk") {
+          const i = data.chunkIndex;
+          const expected = Math.min(CHUNK_SIZE, sess.totalSize - i * CHUNK_SIZE);
+          if (!Number.isInteger(i) || i !== sess.receivedCount || i >= sess.totalChunks || !(data.data instanceof ArrayBuffer) || data.data.byteLength !== expected) {
+            incomingSessions.delete(key); renderActiveTransfers(); return respond("retry");
+          }
+          sess.chunks.push(data.data); sess.receivedCount++;
+          renderActiveTransfers();
+          return respond("chunkAck", {chunkIndex:i});
+        }
+        if (data.type === "end") {
+          if (sess.receivedCount !== sess.totalChunks) { incomingSessions.delete(key); renderActiveTransfers(); return respond("retry"); }
+          if (completedTransfers.has(sess.transferKey)) { incomingSessions.delete(key); renderActiveTransfers(); return respond("ack"); }
+          const blob = new Blob(sess.chunks, {type:sess.mimeType});
+          if (blob.size !== sess.totalSize) { incomingSessions.delete(key); renderActiveTransfers(); return respond("retry"); }
+          sess.chunks.length = 0;
+          const url = URL.createObjectURL(blob);
+          const seq = String(pcVideoCounter++).padStart(3, "0");
+          const safeDev = sanitizeFileNamePart(sess.deviceName);
+          const isImage = (sess.mimeType || "").startsWith("image/") || /\.(jpg|jpeg|png|webp|gif)$/i.test(sess.originalFileName || "");
+          const extMatch = (sess.originalFileName || "").match(/\.(mp4|mov|webm|mkv|avi|jpg|jpeg|png|webp|gif)$/i);
+          const ext = extMatch ? extMatch[0].toLowerCase() : (isImage ? ".jpg" : ".webm");
+          const fileName = `${safeDev}_${formatTimestampForFile()}_${seq}${ext}`;
+          const timestamp = new Date().toLocaleTimeString();
+
+          const videoRecord = {
+            id: data.sessionId,
+            mediaType: isImage ? "image" : "video",
+            deviceName: sess.deviceName,
+            fileName,
+            url,
+            blob,
+            size: blob.size || sess.totalSize,
+            timestamp
+          };
+
+          receivedVideos.unshift(videoRecord);
+          incomingSessions.delete(key);
+          completedTransfers.set(sess.transferKey, true);
+          renderActiveTransfers();
+          renderFilterTabs();
+          renderPcVideos();
+
+          const autoSaveEl = document.getElementById("pc-auto-save");
+          if (autoSaveEl && autoSaveEl.checked) {
+            triggerDownload(url, fileName);
+          }
+
+          try {
+            conn.send({ type: "ack", sessionId: data.sessionId });
+          } catch (e) {}
+
+          showToast(tr("received" , [sess.deviceName, fileName]), "success");
+        }
+      }
+
+      function renderActiveTransfers() {
+        const box = document.getElementById("pc-active-transfers");
+        if (incomingSessions.size === 0) {
+          box.classList.add("hidden");
+          box.innerHTML = "";
+          return;
+        }
+        box.classList.remove("hidden");
+        box.innerHTML = "";
+        incomingSessions.forEach((sess) => {
+          const pct = Math.min(100, Math.round((sess.receivedCount / sess.totalChunks) * 100));
+          const card = document.createElement("div");
+          card.className = "glass-card rounded-xl p-3 border border-indigo-500/30";
+          card.innerHTML = `
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-indigo-300 font-semibold" data-i18n="receiving" data-i18n-args="${encodeURIComponent(JSON.stringify([sess.deviceName]))}">${escapeHtml(tr("receiving", [sess.deviceName]))}</span>
+              <span class="text-white font-bold">${pct}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-500 transition-all duration-150" style="width: ${pct}%"></div>
+            </div>
+          `;
+          box.appendChild(card);
+        });
+      }
+
+      function renderFilterTabs() {
+        const tabsEl = document.getElementById("pc-filter-tabs");
+        const devices = Array.from(new Set(receivedVideos.map((v) => v.deviceName)));
+        tabsEl.innerHTML = "";
+
+        const allBtn = document.createElement("button");
+        allBtn.type = "button";
+        allBtn.className = `px-3 py-1 rounded-lg text-xs font-semibold transition ${activeFilter === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`;
+        localize(allBtn, "allCount", [receivedVideos.length]);
+        allBtn.onclick = () => { activeFilter = "ALL"; renderFilterTabs(); renderPcVideos(); };
+        tabsEl.appendChild(allBtn);
+
+        devices.forEach((dev) => {
+          const count = receivedVideos.filter((v) => v.deviceName === dev).length;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `px-3 py-1 rounded-lg text-xs font-semibold transition ${activeFilter === dev ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`;
+          btn.textContent = `${dev} (${count})`;
+          btn.onclick = () => { activeFilter = dev; renderFilterTabs(); renderPcVideos(); };
+          tabsEl.appendChild(btn);
+        });
+      }
+
+      function renderPcVideos() {
+        const listEl = document.getElementById("pc-video-list");
+        const btnAll = document.getElementById("btn-pc-download-all");
+        const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
+
+        if (receivedVideos.length > 0) btnAll.classList.remove("hidden");
+        else btnAll.classList.add("hidden");
+
+        if (filtered.length === 0) {
+          listEl.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500 text-sm"><span data-i18n="noMedia">${tr("noMedia")}</span></div>`;
+          return;
+        }
+
+        listEl.innerHTML = "";
+        filtered.forEach((v) => {
+          const card = document.createElement("div");
+          card.className = "bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden flex flex-col";
+          const isImage = v.mediaType === "image" || (v.blob && v.blob.type && v.blob.type.startsWith("image/"));
+          const previewHtml = isImage
+            ? `<img src="${v.url}" alt="${escapeHtml(v.fileName)}" class="w-full aspect-video object-cover bg-black" />`
+            : `<video src="${v.url}" controls class="w-full aspect-video bg-black"></video>`;
+          card.innerHTML = `
+            ${previewHtml}
+            <div class="p-3 flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-indigo-300 truncate">${escapeHtml(v.deviceName)}</div>
+                <div class="text-[11px] text-slate-400 truncate">${escapeHtml(v.fileName)}</div>
+                <div class="text-[10px] text-slate-500">${formatBytes(v.size)} · ${v.timestamp}</div>
+              </div>
+              <button type="button" class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+                <span data-i18n="save">${tr("save")}</span>
+              </button>
+            </div>
+          `;
+          card.querySelector(".btn-dl").addEventListener("click", () => triggerDownload(v.url, v.fileName));
+          const release = document.createElement("button");
+          release.className = "text-xs text-red-300 p-2";
+          localize(release,"releaseMedia");
+          release.onclick = () => { if (!confirm(tr("releaseConfirm"))) return; URL.revokeObjectURL(v.url); receivedVideos.splice(receivedVideos.indexOf(v),1); renderFilterTabs(); renderPcVideos(); };
+          card.appendChild(release);
+          listEl.appendChild(card);
+        });
+      }
+
+      function triggerDownload(url, filename) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      document.getElementById("btn-pc-download-all").addEventListener("click", () => {
+        const filtered = activeFilter === "ALL" ? receivedVideos : receivedVideos.filter((v) => v.deviceName === activeFilter);
+        filtered.forEach((v, idx) => {
+          setTimeout(() => triggerDownload(v.url, v.fileName), idx * 300);
+        });
+      });
+
+      document.getElementById("btn-mode-pc").addEventListener("click", initPcMode);
+
+      document.getElementById("btn-edit-pc-code").addEventListener("click", () => {
+        const editor = document.getElementById("pc-code-editor");
+        const input = document.getElementById("pc-custom-code-input");
+        editor.classList.toggle("hidden");
+        if (!editor.classList.contains("hidden")) {
+          input.value = currentPcRoomCode || DEFAULT_PC_ROOM_CODE;
+          input.focus();
+          input.select();
+        }
+      });
+
+      document.getElementById("btn-save-pc-code").addEventListener("click", () => {
+        const val = document.getElementById("pc-custom-code-input").value;
+        applyPcRoomCode(val, { hideEditor: true });
+      });
+
+      document.getElementById("pc-custom-code-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          applyPcRoomCode(e.target.value, { hideEditor: true });
+        }
+      });
+
+      document.getElementById("btn-random-pc-code").addEventListener("click", () => {
+        applyPcRoomCode(generateRoomCode(), { hideEditor: true });
+      });
+
+      document.getElementById("btn-reset-pc-code").addEventListener("click", () => {
+        applyPcRoomCode(DEFAULT_PC_ROOM_CODE, { hideEditor: true });
+        showToast(tr("codeReset" , [DEFAULT_PC_ROOM_CODE]), "info");
+      });
+
+      document.getElementById("pc-qr-base-url").addEventListener("input", () => {
+        userManuallyEditedQrUrl = true;
+        if (currentPcRoomCode) {
+          renderPcQrCode(currentPcRoomCode);
+        }
+      });
+
+      document.getElementById("btn-detect-local-ip").addEventListener("click", async () => {
+        const ip = await applyAutoDetectedQrUrl(true);
+        if (ip) {
+          userManuallyEditedQrUrl = true;
+          showToast(tr("ipUpdated" , [ip]), "success");
+        } else {
+          showToast(tr("ipFailed"), "info");
+        }
+      });
+
+      document.getElementById("btn-reset-qr-url").addEventListener("click", () => {
+        const defaultUrl = getDefaultPcBaseUrl();
+        userManuallyEditedQrUrl = false;
+        document.getElementById("pc-qr-base-url").value = defaultUrl;
+        try {
+          localStorage.removeItem("snap2pc_qr_base_url");
+        } catch (e) {}
+        if (currentPcRoomCode) {
+          renderPcQrCode(currentPcRoomCode);
+        }
+        showToast(tr("qrReset"), "info");
+      });
+
+      // =========================================================
+      // 5. 휴대폰 (촬영 및 오프라인 대기열 전송 모드) 로직
+      // =========================================================
+      let phonePeer = null;
+      let phoneConn = null;
+      let isPhoneConnected = false;
+      let mediaStream = null;
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let isRecording = false;
+      let recTimerInterval = null;
+      let recSeconds = 0;
+      let facingMode = "environment";
+      let isFlushingQueue = false;
+      let phoneInitialized = false;
+      let phoneConnectTimeout = null;
+      let phoneStatusState = "disconnected";
+      const pendingAcks = new Map();
+      let retryTimer = null, retryCount = 0, reconnectTimer = null, targetRoom = "", generation = 0;
+      function newTransferId() {
+        const c = window.crypto || window.msCrypto;
+        if (c && typeof c.randomUUID === "function") {
+          try { return c.randomUUID(); } catch (_) {}
+        }
+        if (!c || typeof c.getRandomValues !== "function") throw new Error("Secure random generator unavailable");
+        const bytes = c.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 15) | 64;
+        bytes[8] = (bytes[8] & 63) | 128;
+        const hex = Array.from(bytes, b => (b + 256).toString(16).slice(1)).join("");
+        return hex.slice(0,8)+"-"+hex.slice(8,12)+"-"+hex.slice(12,16)+"-"+hex.slice(16,20)+"-"+hex.slice(20);
+      }
+      let clientId = null;
+      function getTransferClientId() {
+        if (clientId) return clientId;
+        try { clientId = localStorage.getItem("snap-transfer-client"); } catch (_) {}
+        if (!clientId || !/^[a-zA-Z0-9_-]{1,100}$/.test(clientId)) {
+          clientId = newTransferId();
+          try { localStorage.setItem("snap-transfer-client", clientId); } catch (_) {}
+        }
+        return clientId;
+      }
+      function scheduleReconnect() {
+        if (!targetRoom || reconnectTimer || !navigator.onLine) return;
+        reconnectTimer = setTimeout(() => { reconnectTimer = null; if (!isPhoneConnected) connectToPc(targetRoom); }, 5000);
+      }
+      function requestTransfer(conn, msg, expected) {
+        return new Promise((resolve,reject) => {
+          if (!conn.open || conn !== phoneConn) return reject(new Error("disconnected"));
+          const timer = setTimeout(() => { pendingAcks.delete(msg.sessionId); reject(new Error("timeout")); }, 20000);
+          pendingAcks.set(msg.sessionId, {conn, expected, index:msg.chunkIndex, finish: (result) => { clearTimeout(timer); pendingAcks.delete(msg.sessionId); resolve(result); }, fail: () => { clearTimeout(timer); pendingAcks.delete(msg.sessionId); reject(new Error("disconnected")); }});
+          try { conn.send(msg); } catch (_) { pendingAcks.get(msg.sessionId)?.fail(); }
+        });
+      }
+      function failPending(conn) { for (const p of pendingAcks.values()) if (p.conn === conn) p.fail(); }
+
+      function setPhoneStatus(state) {
+        phoneStatusState = state;
+        const badge = document.getElementById("phone-status-badge");
+        const dict = I18N[currentLang] || I18N.ko;
+        if (state === "connected") {
+          isPhoneConnected = true;
+          badge.textContent = dict.phoneStatusConnected;
+          badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300";
+        } else if (state === "connecting") {
+          isPhoneConnected = false;
+          badge.textContent = dict.phoneStatusConnecting;
+          badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-300";
+        } else {
+          isPhoneConnected = false;
+          badge.textContent = dict.phoneStatusDisconnected;
+          badge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-700 text-slate-300";
+        }
+      }
+
+      async function startCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showToast(tr("noCameraAPI"), "info");
+          return;
+        }
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((t) => t.stop());
+        }
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode },
+            audio: true
+          });
+          document.getElementById("phone-preview").srcObject = mediaStream;
+        } catch (err) {
+          console.error("Camera error:", err);
+          showToast(tr("cameraPermission"), "error");
+        }
+      }
+
+      function connectToPc(rawCode) {
+        const code = normalizeRoomCode(rawCode);
+        if (!code) {
+          showToast(tr("enterCode"), "error");
+          return;
+        }
+
+        if (typeof Peer !== "function") {
+          showToast(tr("peerMissing"), "error");
+          return;
+        }
+
+        targetRoom = code;
+        const gen = ++generation;
+        clearTimeout(reconnectTimer); reconnectTimer = null;
+        document.getElementById("phone-room-input").value = code;
+        setPhoneStatus("connecting");
+
+        if (phoneConnectTimeout) {
+          clearTimeout(phoneConnectTimeout);
+          phoneConnectTimeout = null;
+        }
+        if (phoneConn) {
+          failPending(phoneConn);
+          try { phoneConn.close(); } catch (e) {}
+          phoneConn = null;
+        }
+        if (phonePeer) {
+          try { phonePeer.destroy(); } catch (e) {}
+          phonePeer = null;
+        }
+
+        try {
+          phonePeer = new Peer(undefined, getPeerConfig());
+        } catch (err) {
+          console.warn("Phone Peer init error:", err);
+          setPhoneStatus("disconnected");
+          showToast(tr("initFailed"), "error");
+          return;
+        }
+
+        phoneConnectTimeout = setTimeout(() => {
+          if (!isPhoneConnected) {
+            setPhoneStatus("disconnected");
+            showToast(tr("timeout"), "error");
+            scheduleReconnect();
+          }
+        }, 12000);
+
+        phonePeer.on("open", () => {
+          if (gen !== generation) return;
+          const targetId = PEER_PREFIX + code;
+          phoneConn = phonePeer.connect(targetId, { reliable: true });
+
+          const connection = phoneConn;
+          phoneConn.on("open", () => {
+            if (gen !== generation) return;
+            retryCount = 0;
+            if (phoneConnectTimeout) {
+              clearTimeout(phoneConnectTimeout);
+              phoneConnectTimeout = null;
+            }
+            setPhoneStatus("connected");
+            const devName = document.getElementById("phone-device-name").value.trim() || "Phone";
+            try {
+              phoneConn.send({ type: "hello", deviceName: devName });
+            } catch (e) {}
+            showToast(tr("laptopConnected" , [code]), "success");
+            flushQueue();
+          });
+
+          phoneConn.on("data", (msg) => {
+            if (gen !== generation || !msg) return;
+            const p = pendingAcks.get(msg.sessionId);
+            if (!p || p.conn !== connection) return;
+            if (["busy","reject","retry"].includes(msg.type) || (p.expected.includes(msg.type) && (msg.type !== "chunkAck" || msg.chunkIndex === p.index))) p.finish(msg.type);
+          });
+
+          phoneConn.on("close", () => {
+            if (gen !== generation) return;
+            failPending(connection); scheduleReconnect();
+            if (phoneConnectTimeout) {
+              clearTimeout(phoneConnectTimeout);
+              phoneConnectTimeout = null;
+            }
+            setPhoneStatus("disconnected");
+            showToast(tr("laptopDisconnected"), "info");
+          });
+
+          phoneConn.on("error", () => {
+            if (gen !== generation) return;
+            failPending(connection); scheduleReconnect();
+            if (phoneConnectTimeout) {
+              clearTimeout(phoneConnectTimeout);
+              phoneConnectTimeout = null;
+            }
+            setPhoneStatus("disconnected");
+            showToast(tr("laptopFailed"), "error");
+          });
+        });
+
+        phonePeer.on("error", () => {
+          if (gen !== generation) return;
+          failPending(phoneConn); scheduleReconnect();
+          if (phoneConnectTimeout) {
+            clearTimeout(phoneConnectTimeout);
+            phoneConnectTimeout = null;
+          }
+          setPhoneStatus("disconnected");
+          showToast(tr("connectFailed"), "error");
+        });
+      }
+
+      function initPhoneMode(prefillRoom = "") {
+        showView("phone");
+
+        const nameInput = document.getElementById("phone-device-name");
+        const roomInput = document.getElementById("phone-room-input");
+
+        if (!phoneInitialized) {
+          phoneInitialized = true;
+          let savedName = "";
+          try {
+            savedName = localStorage.getItem("snap2pc_device_name") || "";
+          } catch (e) {}
+          nameInput.value = savedName || `Phone-${Math.floor(100 + Math.random() * 900)}`;
+
+          nameInput.addEventListener("change", () => {
+            const trimmed = nameInput.value.trim() || "Phone";
+            nameInput.value = trimmed;
+            try {
+              localStorage.setItem("snap2pc_device_name", trimmed);
+            } catch (e) {}
+            if (isPhoneConnected && phoneConn) {
+              try {
+                phoneConn.send({ type: "hello", deviceName: trimmed });
+              } catch (e) {}
+            }
+          });
+        }
+
+        if (prefillRoom) {
+          const cleanRoom = normalizeRoomCode(prefillRoom);
+          roomInput.value = cleanRoom;
+          connectToPc(cleanRoom);
+        } else if (!roomInput.value) {
+          roomInput.value = DEFAULT_PC_ROOM_CODE;
+        }
+
+        renderQueueList();
+        startCamera();
+      }
+
+      document.getElementById("btn-mode-phone").addEventListener("click", () => {
+        initPhoneMode("");
+      });
+
+      document.getElementById("btn-switch-cam").addEventListener("click", async () => {
+        facingMode = facingMode === "environment" ? "user" : "environment";
+        await startCamera();
+      });
+
+      document.getElementById("btn-phone-connect").addEventListener("click", () => {
+        const code = document.getElementById("phone-room-input").value;
+        connectToPc(code);
+      });
+
+      // 녹화 시작/종료
+      document.getElementById("btn-record").addEventListener("click", () => {
+        const btn = document.getElementById("btn-record");
+        const recBadge = document.getElementById("phone-rec-badge");
+        const recTimer = document.getElementById("phone-rec-timer");
+
+        if (!isRecording) {
+          if (!mediaStream) {
+            showToast(tr("cameraNotReady"), "error");
+            return;
+          }
+          recordedChunks = [];
+          const mimeType = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+            ? "video/webm;codecs=vp8,opus"
+            : "";
+
+          try {
+            mediaRecorder = mimeType ? new MediaRecorder(mediaStream, { mimeType }) : new MediaRecorder(mediaStream);
+          } catch (err) {
+            mediaRecorder = new MediaRecorder(mediaStream);
+          }
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              recordedChunks.push(event.data);
+            }
+          };
+
+          mediaRecorder.onstop = async () => {
+            const finalMime = mediaRecorder.mimeType || "video/webm";
+            const ext = finalMime.includes("mp4") ? ".mp4" : ".webm";
+            const blob = new Blob(recordedChunks, { type: finalMime });
+            recordedChunks = [];
+            if (blob.size > 0) {
+              await enqueueOrSendVideo(blob, `recording_${Date.now()}${ext}`);
+            }
+          };
+
+          mediaRecorder.start(1000);
+          isRecording = true;
+          recSeconds = 0;
+          recTimer.textContent = "00:00";
+          recBadge.classList.remove("hidden");
+          btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-amber-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap";
+          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-sm bg-white shrink-0"></span><span data-i18n="stopRec">${tr("stopRec")}</span>`;
+
+          recTimerInterval = setInterval(() => {
+            recSeconds += 1;
+            const mins = String(Math.floor(recSeconds / 60)).padStart(2, "0");
+            const secs = String(recSeconds % 60).padStart(2, "0");
+            recTimer.textContent = `${mins}:${secs}`;
+          }, 1000);
+        } else {
+          isRecording = false;
+          clearInterval(recTimerInterval);
+          recBadge.classList.add("hidden");
+          btn.className = "w-full min-w-0 py-3.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-1.5 whitespace-nowrap";
+          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-white shrink-0"></span><span data-i18n="startRecBtn">${tr("startRecBtn")}</span>`;
+
+          if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            try {
+              mediaRecorder.stop();
+            } catch (err) {
+              console.warn("MediaRecorder stop error:", err);
+            }
+          }
+        }
+      });
+
+      // 사진 촬영 (현재 카메라 프리뷰 프레임을 JPEG로 캡처)
+      document.getElementById("btn-capture-photo").addEventListener("click", async () => {
+        const videoEl = document.getElementById("phone-preview");
+        if (!mediaStream || !videoEl || videoEl.readyState < 2 || !videoEl.videoWidth || !videoEl.videoHeight) {
+          showToast(tr("cameraRetry"), "error");
+          return;
+        }
+
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = videoEl.videoWidth;
+          canvas.height = videoEl.videoHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            showToast(tr("canvasFail"), "error");
+            return;
+          }
+          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+          const blob = await new Promise((resolve) => {
+            canvas.toBlob((b) => resolve(b), "image/jpeg", 0.92);
+          });
+
+          if (!blob) {
+            showToast(tr("photoFail"), "error");
+            return;
+          }
+
+          await enqueueOrSendVideo(blob, `photo_${Date.now()}.jpg`);
+        } catch (err) {
+          console.error("Photo capture error:", err);
+          showToast(tr("photoError"), "error");
+        }
+      });
+
+      // 갤러리 파일 선택
+      document.getElementById("phone-file-input").addEventListener("change", async (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const file of files) {
+          await enqueueOrSendVideo(file, file.name);
+        }
+        e.target.value = "";
+      });
+
+      // 대기열 저장 후 연결 시 자동 전송
+      async function enqueueOrSendVideo(blob, fileName) {
+        const saveLocal = document.getElementById("phone-save-local").checked;
+        if (saveLocal) {
+          try {
+            const localUrl = URL.createObjectURL(blob);
+            triggerDownload(localUrl, fileName);
+            setTimeout(() => URL.revokeObjectURL(localUrl), 5000);
+          } catch (err) {
+            console.warn("Local save failed:", err);
+          }
+        }
+
+        try {
+        const item = {
+          id: newTransferId(),
+          fileName,
+          mimeType: blob.type || "video/webm",
+          size: blob.size,
+          blob,
+          createdAt: new Date().toLocaleTimeString()
+        };
+        await addToQueueDB(item);
+        await renderQueueList();
+
+        if (isPhoneConnected && phoneConn) {
+          flushQueue();
+        } else {
+          showToast(tr("queued"), "info");
+        }
+        } catch (err) {
+          console.error("Queue storage failed", err);
+          showToast(tr("queueStorageFailed"), "error");
+          try { const url = URL.createObjectURL(blob); triggerDownload(url, fileName); setTimeout(() => URL.revokeObjectURL(url), 60000); } catch (_) {}
+        }
+      }
+
+      async function renderQueueList() {
+        const listEl = document.getElementById("phone-queue-list");
+        const items = await getAllQueueDB();
+        if (items.length === 0) {
+          listEl.innerHTML = `<p class="text-slate-500 text-center py-4"><span data-i18n="emptyQueue">${tr("emptyQueue")}</span></p>`;
+          return;
+        }
+        listEl.innerHTML = "";
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between bg-slate-900/70 px-3 py-2 rounded-xl border border-slate-800";
+          row.innerHTML = `
+            <div class="min-w-0">
+              <div class="text-slate-200 font-medium truncate">${escapeHtml(item.fileName)}</div>
+              <div class="text-[10px] text-slate-400">${formatBytes(item.size)} · ${item.createdAt}</div>
+            </div>
+            <button type="button" class="btn-del-q text-red-400 hover:text-red-300 px-2 py-1 text-[11px] font-semibold"><span data-i18n="delete">${tr("delete")}</span></button>
+          `;
+          row.querySelector(".btn-del-q").addEventListener("click", async () => {
+            await removeFromQueueDB(item.id);
+            renderQueueList();
+          });
+          listEl.appendChild(row);
+        });
+      }
+
+      async function flushQueue() {
+        if (isFlushingQueue || !isPhoneConnected || !phoneConn) return;
+        isFlushingQueue = true;
+
+        const progressBox = document.getElementById("phone-upload-progress-box");
+        const progressLabel = document.getElementById("phone-upload-label");
+        const progressPercent = document.getElementById("phone-upload-percent");
+        const progressBar = document.getElementById("phone-upload-bar");
+
+        try {
+          const items = await getAllQueueDB();
+          for (const item of items) {
+            if (!isPhoneConnected) break;
+
+            progressBox.classList.remove("hidden");
+            localize(progressLabel, "sending", [item.fileName]);
+
+            const sessionId = item.id;
+            const devName = document.getElementById("phone-device-name").value.trim() || "Phone";
+            const totalChunks = Math.max(1, Math.ceil(item.blob.size / CHUNK_SIZE));
+
+            const conn = phoneConn;
+            const result = await requestTransfer(conn, {type:"meta", sessionId, clientId:getTransferClientId(), deviceName:devName, fileName:item.fileName, mimeType:item.mimeType, totalSize:item.blob.size, totalChunks}, ["ready","ack"]);
+            if (result === "reject") { showToast(tr("transferRejected"), "error"); continue; }
+            if (result !== "ack") {
+              if (result !== "ready") throw new Error(result);
+              for (let i=0; i<totalChunks; i++) {
+                const buffer = await item.blob.slice(i*CHUNK_SIZE, (i+1)*CHUNK_SIZE).arrayBuffer();
+                const status = await requestTransfer(conn, {type:"chunk",sessionId,chunkIndex:i,data:buffer}, ["chunkAck"]);
+                if (status !== "chunkAck") throw new Error(status);
+                const pct = Math.round((i+1)/totalChunks*100);
+                progressPercent.textContent = `${pct}%`; progressBar.style.width = `${pct}%`;
+              }
+              if (await requestTransfer(conn,{type:"end",sessionId},["ack"]) !== "ack") throw new Error("no ACK");
+            }
+            retryCount = 0;
+            await removeFromQueueDB(item.id);
+            await renderQueueList();
+            showToast(tr("sent" , [item.fileName]), "success");
+          }
+        } catch (err) {
+          console.warn("Queue flush interrupted:", err);
+          showToast(tr("transferRetry"), "info");
+          if (retryCount < 8) { clearTimeout(retryTimer); retryTimer = setTimeout(() => flushQueue(), Math.min(30000, 1000 * 2 ** retryCount++)); }
+        } finally {
+          isFlushingQueue = false;
+          progressBox.classList.add("hidden");
+        }
+      }
+
+      document.getElementById("btn-flush-queue").addEventListener("click", () => {
+        if (!isPhoneConnected) {
+          showToast(tr("connectFirst"), "error");
+          return;
+        }
+        retryCount = 0;
+        flushQueue();
+      });
+
+      // 네트워크 복구/단절 감지
+      window.addEventListener("online", () => {
+        showToast(tr("online"), "info");
+        if (isPhoneConnected) flushQueue(); else scheduleReconnect();
+      });
+
+      window.addEventListener("offline", () => {
+        setPhoneStatus("disconnected");
+        showToast(tr("offline"), "info");
+      });
+
+      // PWA 설치 안내 모달
+      const pwaModal = document.getElementById("pwa-modal");
+      document.getElementById("btn-pwa-info").addEventListener("click", () => {
+        pwaModal.classList.remove("hidden");
+        pwaModal.classList.add("flex");
+      });
+      document.getElementById("btn-close-pwa").addEventListener("click", () => {
+        pwaModal.classList.add("hidden");
+        pwaModal.classList.remove("flex");
+      });
+
+      // 외부망(TURN) 설정 모달
+      const turnModal = document.getElementById("turn-modal");
+      updateTurnStatusIndicator();
+
+      document.getElementById("btn-turn-settings").addEventListener("click", () => {
+        const cfg = getSavedTurnConfig();
+        document.getElementById("turn-enabled").checked = cfg.enabled;
+        document.getElementById("turn-url").value = cfg.url;
+        document.getElementById("turn-username").value = cfg.username;
+        document.getElementById("turn-credential").value = cfg.credential;
+        turnModal.classList.remove("hidden");
+        turnModal.classList.add("flex");
+      });
+
+      document.getElementById("btn-close-turn").addEventListener("click", () => {
+        turnModal.classList.add("hidden");
+        turnModal.classList.remove("flex");
+      });
+
+      document.getElementById("btn-clear-turn").addEventListener("click", () => {
+        try {
+          localStorage.removeItem(TURN_STORAGE_KEY);
+        } catch (e) { showToast(tr('turnStorageError'), 'error'); return; }
+        document.getElementById("turn-enabled").checked = false;
+        document.getElementById("turn-url").value = "";
+        document.getElementById("turn-username").value = "";
+        document.getElementById("turn-credential").value = "";
+        updateTurnStatusIndicator();
+        if (currentPcRoomCode) {
+          renderPcQrCode(currentPcRoomCode);
+          if (pcPeer && !pcPeer.destroyed) bindPcPeer(currentPcRoomCode);
+        }
+        showToast(I18N[currentLang].turnResetToast, "info");
+      });
+
+      document.getElementById("btn-save-turn").addEventListener("click", () => {
+        const enabled = document.getElementById("turn-enabled").checked;
+        const url = document.getElementById("turn-url").value.trim();
+        const username = document.getElementById("turn-username").value.trim();
+        const credential = document.getElementById("turn-credential").value.trim();
+
+        if (enabled && !url) {
+          showToast(I18N[currentLang].turnRequiredToast, "error");
+          return;
+        }
+
+        try {
+          localStorage.setItem(TURN_STORAGE_KEY, JSON.stringify({ enabled, url, username, credential }));
+        } catch (e) { showToast(tr('turnStorageError'), 'error'); return; }
+
+        updateTurnStatusIndicator();
+        turnModal.classList.add("hidden");
+        turnModal.classList.remove("flex");
+
+        if (currentPcRoomCode) {
+          renderPcQrCode(currentPcRoomCode);
+          if (pcPeer && !pcPeer.destroyed) {
+            bindPcPeer(currentPcRoomCode);
+          }
+        }
+        showToast(
+          enabled ? I18N[currentLang].turnSavedToast : I18N[currentLang].turnLocalToast,
+          "success"
+        );
+      });
+
+      // URL 파라미터(?room=XXXXX&turn=...)로 접속 시 자동으로 휴대폰 모드 열기
+      const launchUrl = new URL(window.location.href);
+      const launchFragment = new URLSearchParams(launchUrl.hash.slice(1));
+      const roomParam = launchUrl.searchParams.get('room');
+      const turnParam = launchFragment.get('turn') || launchUrl.searchParams.get('turn');
+      let invalidTurnParam = false;
+      if (launchFragment.has('turn') || launchUrl.searchParams.has('turn')) {
+        const decodedTurn = turnParam && decodeTurnParam(turnParam);
+        if (roomParam && decodedTurn && decodedTurn.url) {
+          sessionTurnConfig = decodedTurn;
+        } else {
+          invalidTurnParam = true;
+        }
+        launchFragment.delete('turn');
+        launchUrl.searchParams.delete('turn');
+        launchUrl.hash = launchFragment.toString();
+        try { history.replaceState(history.state, '', launchUrl.toString()); } catch (e) {}
+      }
+      // QR without TURN must not inherit a previously saved TURN configuration.
+      if (roomParam && !sessionTurnConfig) sessionTurnConfig = { enabled: false, url: '' };
+
+      // =========================================================
       // 6. 다국어(한글/영어) 토글
       // =========================================================
-      let pcStatusState = "preparing";
       const I18N = {
         ko: {
+          turnQrNotice: "TURN 인증 정보가 QR에 포함됩니다. 신뢰하는 사람에게만 공유하고 단기 인증 정보를 사용하세요. 외부망에서는 공개 HTTPS 주소를 사용하세요.",
+          turnQrError: "QR 생성 실패: 주소 또는 인증 정보 길이를 확인하세요.",
+          turnInvalid: "TURN QR 정보가 올바르지 않습니다. PC에서 새 QR을 스캔하세요.",
+          turnAutoApplied: "QR의 TURN 설정을 적용하여 연결을 시도합니다.",
+          turnStorageError: "TURN 설정을 저장하거나 초기화하지 못했습니다.",
+          ready: "준비 중...",
+          applyCode: "적용",
+          randomCode: "랜덤",
+          qrAddress: "QR 접속용 주소 (호스트/URL)",
+          detectIP: "IP 자동 감지",
+          resetQR: "현재 주소로 초기화",
+          qrWarning: "현재 주소가 127.0.0.1/localhost입니다. 휴대폰 사파리 접속을 위해 노트북 IP 또는 HTTPS 주소를 입력하세요.",
+          noDevices: "아직 연결된 휴대폰이 없습니다.",
+          all: "전체",
+          emptyMedia: "휴대폰에서 영상이나 사진을 촬영해 전송하면 이곳에 표시됩니다.",
+          uploading: "전송 중...",
+          emptyQueue: "대기 중인 영상이 없습니다.",
+          codeExample: "예: Z9PZT",
+          urlExample: "예: https://munjojung.github.io/snaptopc/",
+          nameExample: "예: 철수-폰",
+          editTitle: "연결 코드 변경",
+          resetTitle: "기본 코드(Z9PZT)로 복원",
+          camTitle: "전/후면 카메라 전환",
+          ipFound: "감지된 로컬 IP: {0}",
+          ipHidden: "브라우저 정책으로 로컬 IP가 숨겨졌을 수 있습니다. 직접 주소를 입력해 주세요.",
+          invalidCode: "영문 또는 숫자로 된 연결 코드를 입력해 주세요.",
+          peerFail: "PeerJS 로드 실패",
+          peerNetwork: "네트워크 연결을 확인해 주세요. (PeerJS 스크립트 로드 실패)",
+          relayWait: "로컬 중계 대기 중",
+          receiveWait: "수신 대기 중",
+          codeReady: "연결 코드 {0}가 준비되었습니다.",
+          codeTaken: "코드 사용 중",
+          connError: "연결 오류",
+          codeTakenMsg: "코드 {0}가 이미 사용 중입니다. 잠시 후 다시 시도하거나 코드를 변경해 주세요.",
+          signalFail: "시그널링 서버 연결에 실패했습니다.",
+          unnamed: "이름 없는 기기",
+          deviceCount: "{0}대",
+          connected: "연결됨",
+          deviceConnected: "{0} 기기가 연결되었습니다.",
+          received: "{0}에서 {1} 수신 완료!",
+          receiving: "{0} 수신 중...",
+          allCount: "전체 ({0})",
+          noMedia: "표시할 영상이 없습니다.",
+          save: "저장",
+          codeReset: "기본 연결 코드({0})로 복원했습니다.",
+          ipUpdated: "로컬 IP ({0})로 QR 주소가 갱신되었습니다.",
+          ipFailed: "로컬 IP를 자동 감지하지 못했습니다. 직접 입력해 주세요.",
+          qrReset: "QR 접속용 주소가 현재 주소로 초기화되었습니다.",
+          noCameraAPI: "이 환경에서는 카메라 API를 사용할 수 없습니다. (갤러리 선택 이용 가능)",
+          cameraPermission: "카메라 권한을 허용해 주세요. (갤러리 선택은 계속 사용 가능)",
+          enterCode: "연결 코드를 입력해 주세요.",
+          peerMissing: "PeerJS 라이브러리를 불러오지 못했습니다.",
+          initFailed: "연결을 초기화할 수 없습니다.",
+          timeout: "연결 시간이 초과되었습니다. 코드를 확인하거나 새로고침해 주세요.",
+          laptopConnected: "노트북({0})과 연결되었습니다.",
+          laptopDisconnected: "노트북과 연결이 끊어졌습니다.",
+          laptopFailed: "노트북 연결에 실패했습니다.",
+          connectFailed: "연결할 수 없습니다. 코드 및 네트워크를 확인하세요.",
+          cameraNotReady: "카메라가 준비되지 않았습니다.",
+          stopRec: "촬영 종료 및 전송",
+          cameraRetry: "카메라 영상이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.",
+          canvasFail: "사진 캡처 캔버스를 초기화할 수 없습니다.",
+          photoFail: "사진 파일 생성에 실패했습니다.",
+          photoError: "사진 촬영 중 오류가 발생했습니다.",
+          queueStorageFailed: "대기열 저장 실패. 원본 다운로드를 시도합니다. 저장 여부를 확인하세요.",
+          transferRejected: "파일 크기 제한 초과 또는 잘못된 파일입니다. 원본은 유지됩니다.",
+          transferRetry: "전송 지연 또는 실패: 원본 유지, 재시도합니다.",
+          releaseMedia: "수신 목록에서 제거",
+          releaseConfirm: "파일을 저장했습니까? 목록에서 제거하면 다시 다운로드할 수 없습니다.",
+          queued: "미연결 상태입니다. 대기열에 안전하게 저장되었습니다.",
+          delete: "삭제",
+          sending: "{0} 전송 중...",
+          sent: "{0} 전송 완료!",
+          connectFirst: "먼저 노트북과 연결해 주세요.",
+          online: "네트워크가 복구되었습니다.",
+          offline: "오프라인 상태입니다. 영상이 전송 대기열에 안전하게 저장됩니다.",
+          appTitle: "SnapToPC - 폰-노트북 영상 전송기",
+          zeroDevices: "0대",
+          pwaTitle: "홈 화면에 앱으로 설치하기",
+          pwaDesc: "이 페이지는 PWA(Progressive Web App)를 지원합니다. 홈 화면에 추가하면 일반 앱처럼 전체 화면으로 빠르게 실행할 수 있습니다.",
+          pwaAndroid: "안드로이드 (Chrome):",
+          pwaIos: "아이폰 (Safari):",
+          pwaDesktop: "노트북 (Chrome/Edge):",
+          pwaInstall: "앱 설치",
+          pwaAndroidMenu: "우측 상단 메뉴(⋮) →",
+          pwaOr: "또는",
+          pwaIosMenu: "하단 공유 버튼(□↑) →",
+          pwaDesktopMenu: "주소창 우측 설치 아이콘 클릭",
+          pwaAddHome: "홈 화면에 추가",
+          pwaOk: "확인",
+          turnTitle: "외부망(TURN) 설정",
+          turnDesc: "모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 설정은 내 브라우저에 저장되며, 활성화하면 QR을 통해 휴대폰에 인증 정보가 전달됩니다.",
+          turnUrlLabel: "TURN 서버 주소 (URL, 여러 개는 쉼표로 구분)",
+          turnUserLabel: "사용자 이름 (Username)",
+          turnCredentialLabel: "비밀번호 (Credential)",
+          turnClear: "초기화",
+          turnClose: "닫기",
+          turnSave: "저장 및 적용",
+          turnUrlPlaceholder: "예: turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp",
+          turnUserPlaceholder: "발급받은 Username",
+          turnCredentialPlaceholder: "발급받은 Credential",
+          turnResetToast: "TURN 설정이 초기화되었습니다. (내부망 기본 모드)",
+          turnRequiredToast: "외부망(TURN)을 켜려면 서버 주소(URL)를 입력해 주세요.",
+          turnSavedToast: "외부망(TURN) 설정이 저장·적용되었습니다.",
+          turnLocalToast: "내부망 기본 모드로 저장되었습니다.",
           appSubtitle: "P2P 다중 영상 전송기",
           turnBtn: "외부망(TURN)",
           pwaBtn: "앱으로 설치 안내",
@@ -17,26 +2039,14 @@
           phoneCardDesc: "노트북에 연결해 영상을 촬영·전송합니다. 연결이 끊겨도 대기열에 자동 저장됩니다.",
           phoneCardCta: "카메라 및 전송 시작",
           connStatus: "연결 상태",
-          pcStatusPreparing: "준비 중...",
-          pcStatusConnecting: "연결 중...",
-          pcStatusWaiting: "수신 대기 중",
-          pcStatusTaken: "코드 사용 중",
-          pcStatusError: "연결 오류",
           pcCodePrompt: "휴대폰에서 아래 코드를 입력하세요",
           editCodeBtn: "코드 변경",
           resetCodeBtn: "Z9PZT 복원",
-          qrUrlLabel: "QR 접속용 주소 (호스트/URL)",
-          detectIpBtn: "IP 자동 감지",
-          resetUrlBtn: "현재 주소로 초기화",
           autoSaveLabel: "수신 완료 시 자동 저장",
           connectedDevices: "연결된 기기",
-          noConnectedDevices: "아직 연결된 휴대폰이 없습니다.",
           receivedMediaTitle: "수신된 미디어 목록",
           receivedMediaDesc: "기기별로 필터링하거나 일괄 다운로드할 수 있습니다.",
           downloadAllBtn: "전체 일괄 저장",
-          filterAll: "전체",
-          emptyMediaMsg: "휴대폰에서 영상이나 사진을 촬영해 전송하면 이곳에 표시됩니다.",
-          noFilteredMedia: "표시할 영상이 없습니다.",
           laptopConnLabel: "노트북 연결",
           deviceNameLabel: "내 기기 이름 (구분용)",
           roomCodeLabel: "노트북 연결 코드",
@@ -51,26 +2061,114 @@
           sendNowBtn: "지금 전송",
           phoneStatusConnected: "노트북과 연결됨",
           phoneStatusConnecting: "연결 중...",
-          phoneStatusDisconnected: "미연결 (오프라인 저장 모드)",
-          pwaModalTitle: "홈 화면에 앱으로 설치하기",
-          pwaModalDesc: "이 페이지는 PWA(Progressive Web App)를 지원합니다. 홈 화면에 추가하면 일반 앱처럼 전체 화면으로 빠르게 실행할 수 있습니다.",
-          pwaAndroid: "• 안드로이드 (Chrome): 우측 상단 메뉴(⋮) → 홈 화면에 추가 또는 앱 설치",
-          pwaIos: "• 아이폰 (Safari): 하단 공유 버튼(□↑) → 홈 화면에 추가",
-          pwaPc: "• 노트북 (Chrome/Edge): 주소창 우측 설치 아이콘 클릭",
-          confirmBtn: "확인",
-          turnModalTitle: "외부망(TURN) 설정",
-          turnModalDesc: "모임 등 같은 네트워크(Wi-Fi)에서는 끌 수 있고, 외부(LTE/5G)에서 접속할 때만 켜서 사용하세요. 입력한 정보는 내 기기 브라우저에만 저장됩니다.",
-          turnUrlLabel: "TURN 서버 주소 (URL, 여러 개는 쉼표로 구분)",
-          turnUrlPlaceholder: "예: turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp",
-          turnUserLabel: "사용자 이름 (Username)",
-          turnUserPlaceholder: "발급받은 Username",
-          turnCredLabel: "비밀번호 (Credential)",
-          turnCredPlaceholder: "발급받은 Credential",
-          resetBtn: "초기화",
-          closeBtn: "닫기",
-          saveApplyBtn: "저장 및 적용"
+          phoneStatusDisconnected: "미연결 (오프라인 저장 모드)"
         },
         en: {
+          turnQrNotice: "This QR contains TURN credentials. Share only with trusted people and use short-lived credentials. Use a public HTTPS URL for external access.",
+          turnQrError: "QR generation failed. Check the URL or credential length.",
+          turnInvalid: "Invalid TURN QR information. Scan a new QR from the PC.",
+          turnAutoApplied: "TURN settings from the QR applied. Connecting…",
+          turnStorageError: "Could not save or reset TURN settings.",
+          ready: "Preparing...",
+          applyCode: "Apply",
+          randomCode: "Random",
+          qrAddress: "QR address (host/URL)",
+          detectIP: "Detect IP",
+          resetQR: "Reset to current URL",
+          qrWarning: "The current address is 127.0.0.1/localhost. Enter the laptop IP or an HTTPS address for phone access.",
+          noDevices: "No phones connected yet.",
+          all: "All",
+          emptyMedia: "Photos and videos sent from your phone will appear here.",
+          uploading: "Sending...",
+          emptyQueue: "No pending media.",
+          codeExample: "e.g. Z9PZT",
+          urlExample: "e.g. https://munjojung.github.io/snaptopc/",
+          nameExample: "e.g. Alex-phone",
+          editTitle: "Change connection code",
+          resetTitle: "Restore default code (Z9PZT)",
+          camTitle: "Switch front/rear camera",
+          ipFound: "Detected local IP: {0}",
+          ipHidden: "Your browser may hide the local IP. Enter the address manually.",
+          invalidCode: "Enter a connection code using letters or numbers.",
+          peerFail: "PeerJS failed to load",
+          peerNetwork: "Check your network connection (PeerJS failed to load).",
+          relayWait: "Waiting for local relay",
+          receiveWait: "Ready to receive",
+          codeReady: "Connection code {0} is ready.",
+          codeTaken: "Code in use",
+          connError: "Connection error",
+          codeTakenMsg: "Code {0} is already in use. Retry later or change the code.",
+          signalFail: "Could not connect to the signaling server.",
+          unnamed: "Unnamed device",
+          deviceCount: "{0} devices",
+          connected: "Connected",
+          deviceConnected: "Device {0} connected.",
+          received: "Received {1} from {0}!",
+          receiving: "Receiving from {0}...",
+          allCount: "All ({0})",
+          noMedia: "No media to display.",
+          save: "Save",
+          codeReset: "Restored default code ({0}).",
+          ipUpdated: "QR address updated to local IP ({0}).",
+          ipFailed: "Could not detect local IP. Enter it manually.",
+          qrReset: "QR address reset to the current URL.",
+          noCameraAPI: "Camera API unavailable. You can still use the gallery.",
+          cameraPermission: "Allow camera access. You can still use the gallery.",
+          enterCode: "Enter the connection code.",
+          peerMissing: "Could not load PeerJS.",
+          initFailed: "Could not initialize the connection.",
+          timeout: "Connection timed out. Check the code or refresh.",
+          laptopConnected: "Connected to laptop ({0}).",
+          laptopDisconnected: "Disconnected from laptop.",
+          laptopFailed: "Could not connect to laptop.",
+          connectFailed: "Cannot connect. Check the code and network.",
+          cameraNotReady: "Camera is not ready.",
+          stopRec: "Stop & Send",
+          cameraRetry: "Camera preview is not ready. Try again shortly.",
+          canvasFail: "Could not initialize photo capture canvas.",
+          photoFail: "Could not create photo file.",
+          photoError: "An error occurred while taking a photo.",
+          queueStorageFailed: "Queue storage failed. Attempting to download the original; please verify it was saved.",
+          transferRejected: "File exceeds limit or is invalid. Original retained.",
+          transferRetry: "Transfer delayed or failed. Original retained; retrying.",
+          releaseMedia: "Remove received file",
+          releaseConfirm: "Have you saved this file? Removing it prevents further downloads.",
+          queued: "Disconnected. Saved safely to the queue.",
+          delete: "Delete",
+          sending: "Sending {0}...",
+          sent: "Sent {0}!",
+          connectFirst: "Connect to your laptop first.",
+          online: "Network connection restored.",
+          offline: "Offline. Media will be saved safely to the transfer queue.",
+          appTitle: "SnapToPC - Phone to PC Media Transfer",
+          zeroDevices: "0 devices",
+          pwaTitle: "Install on your home screen",
+          pwaDesc: "This page supports PWA (Progressive Web App). Add it to your home screen for quick, full-screen access like a regular app.",
+          pwaAndroid: "Android (Chrome):",
+          pwaIos: "iPhone (Safari):",
+          pwaDesktop: "Laptop (Chrome/Edge):",
+          pwaInstall: "Install app",
+          pwaAndroidMenu: "Top-right menu (⋮) →",
+          pwaOr: "or",
+          pwaIosMenu: "Bottom Share button (□↑) →",
+          pwaDesktopMenu: "Click the install icon on the right of the address bar",
+          pwaAddHome: "Add to Home Screen",
+          pwaOk: "OK",
+          turnTitle: "External Network (TURN) Settings",
+          turnDesc: "Leave this off when devices share a Wi-Fi network. Enable it when connecting from an external network (LTE/5G). Settings are stored in your browser. When enabled, credentials are shared with phones through the QR code.",
+          turnUrlLabel: "TURN server URLs (comma-separated)",
+          turnUserLabel: "Username",
+          turnCredentialLabel: "Password (Credential)",
+          turnClear: "Reset",
+          turnClose: "Close",
+          turnSave: "Save & Apply",
+          turnUrlPlaceholder: "e.g. turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp",
+          turnUserPlaceholder: "Your issued username",
+          turnCredentialPlaceholder: "Your issued credential",
+          turnResetToast: "TURN settings reset (default local network mode).",
+          turnRequiredToast: "Enter a server URL to enable TURN.",
+          turnSavedToast: "TURN settings saved and applied.",
+          turnLocalToast: "Saved in default local network mode.",
           appSubtitle: "P2P Multi-Video Sender",
           turnBtn: "External (TURN)",
           pwaBtn: "Install App",
@@ -84,26 +2182,14 @@
           phoneCardDesc: "Connect to your laptop to record and send media. Files are queued safely if offline.",
           phoneCardCta: "Start Camera & Send",
           connStatus: "Connection Status",
-          pcStatusPreparing: "Preparing...",
-          pcStatusConnecting: "Connecting...",
-          pcStatusWaiting: "Waiting for Media",
-          pcStatusTaken: "Code in Use",
-          pcStatusError: "Connection Error",
           pcCodePrompt: "Enter this code on your smartphone",
           editCodeBtn: "Change",
           resetCodeBtn: "Reset Z9PZT",
-          qrUrlLabel: "QR Access URL (Host/URL)",
-          detectIpBtn: "Auto-detect IP",
-          resetUrlBtn: "Reset URL",
           autoSaveLabel: "Auto-save on completion",
           connectedDevices: "Connected Devices",
-          noConnectedDevices: "No smartphones connected yet.",
           receivedMediaTitle: "Received Media",
           receivedMediaDesc: "Filter by device or download all files at once.",
           downloadAllBtn: "Save All",
-          filterAll: "All",
-          emptyMediaMsg: "Videos and photos sent from smartphones will appear here.",
-          noFilteredMedia: "No media to display.",
           laptopConnLabel: "Laptop Connection",
           deviceNameLabel: "My Device Name",
           roomCodeLabel: "Laptop Code",
@@ -118,24 +2204,7 @@
           sendNowBtn: "Send Now",
           phoneStatusConnected: "Connected to Laptop",
           phoneStatusConnecting: "Connecting...",
-          phoneStatusDisconnected: "Disconnected (Offline Cache)",
-          pwaModalTitle: "Install as an App",
-          pwaModalDesc: "This page supports PWA (Progressive Web App). Add it to your home screen to launch quickly in full-screen mode.",
-          pwaAndroid: "• Android (Chrome): Top-right menu (⋮) → Add to Home screen / Install app",
-          pwaIos: "• iPhone (Safari): Bottom Share button (□↑) → Add to Home Screen",
-          pwaPc: "• Laptop (Chrome/Edge): Click the Install icon on the right side of the address bar",
-          confirmBtn: "OK",
-          turnModalTitle: "External Network (TURN) Settings",
-          turnModalDesc: "You can keep this off on the same Wi-Fi, and turn it on only when connecting from an external network (LTE/5G). Credentials are stored locally in your browser.",
-          turnUrlLabel: "TURN Server URL (separate multiple URLs with commas)",
-          turnUrlPlaceholder: "e.g. turns:turn.cloudflare.com:443?transport=tcp, turn:turn.cloudflare.com:3478?transport=udp",
-          turnUserLabel: "Username",
-          turnUserPlaceholder: "Enter issued Username",
-          turnCredLabel: "Credential",
-          turnCredPlaceholder: "Enter issued Credential",
-          resetBtn: "Reset",
-          closeBtn: "Close",
-          saveApplyBtn: "Save & Apply"
+          phoneStatusDisconnected: "Disconnected (Offline Cache)"
         }
       };
 
@@ -144,18 +2213,33 @@
         currentLang = localStorage.getItem("snap2pc_lang") || "ko";
       } catch (e) {}
 
+      function tr(key, args = []) {
+        return (I18N[currentLang]?.[key] || I18N.ko[key] || key).replace(/\{(\d+)\}/g, (_, i) => String(args[Number(i)] ?? ""));
+      }
+      function localize(el, key, args = []) {
+        el.dataset.i18n = key;
+        el.dataset.i18nArgs = encodeURIComponent(JSON.stringify(args));
+        el.textContent = tr(key, args);
+      }
       function applyLanguage(lang) {
         currentLang = lang === "en" ? "en" : "ko";
         document.documentElement.lang = currentLang;
         const dict = I18N[currentLang];
         document.querySelectorAll("[data-i18n]").forEach((el) => {
           const key = el.getAttribute("data-i18n");
-          if (dict[key]) el.textContent = dict[key];
+          if (dict[key]) {
+            let args = [];
+            try { const parsed = JSON.parse(decodeURIComponent(el.dataset.i18nArgs || "%5B%5D")); if (Array.isArray(parsed)) args = parsed; } catch (_) {}
+            el.textContent = tr(key, args);
+          }
         });
         document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
           const key = el.getAttribute("data-i18n-placeholder");
-          if (dict[key]) el.setAttribute("placeholder", dict[key]);
+          if (dict[key]) el.placeholder = dict[key];
         });
+        document.title = tr("appTitle");
+        document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = tr(el.dataset.i18nTitle); });
+        renderConnectedDevices();
         const toggleBtn = document.getElementById("btn-lang-toggle");
         if (toggleBtn) {
           toggleBtn.textContent = currentLang === "ko" ? "EN" : "KO";
@@ -163,21 +2247,26 @@
         if (typeof setPhoneStatus === "function") {
           setPhoneStatus(phoneStatusState);
         }
-        const pcBadge = document.getElementById("pc-status-badge");
-        if (pcBadge) {
-          const pcMap = {
-            preparing: dict.pcStatusPreparing,
-            connecting: dict.pcStatusConnecting,
-            waiting: dict.pcStatusWaiting,
-            taken: dict.pcStatusTaken,
-            error: dict.pcStatusError
-          };
-          if (pcMap[pcStatusState]) pcBadge.textContent = pcMap[pcStatusState];
-        }
-        if (typeof renderConnectedDevices === "function") renderConnectedDevices();
-        if (typeof renderFilterTabs === "function") renderFilterTabs();
-        if (typeof renderPcVideos === "function") renderPcVideos();
         try {
           localStorage.setItem("snap2pc_lang", currentLang);
         } catch (e) {}
       }
+
+      document.getElementById("btn-lang-toggle").addEventListener("click", () => {
+        applyLanguage(currentLang === "ko" ? "en" : "ko");
+      });
+
+      applyLanguage(currentLang);
+      if (invalidTurnParam) showToast(tr('turnInvalid'), 'error');
+      if (roomParam && !invalidTurnParam) {
+        initPhoneMode(roomParam);
+        if (sessionTurnConfig.enabled) showToast(tr('turnAutoApplied'), 'info');
+      }
+      } catch (err) {
+        console.error("SnapToPC initialization failed:", err);
+        document.getElementById("startup-error").hidden = false;
+      }
+    })();
+  </script>
+</body>
+</html>
