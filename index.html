@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.7</span></h1>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.8</span></h1>
           <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
@@ -212,6 +212,8 @@
 
           <div class="w-full text-left bg-slate-900/70 p-3 rounded-xl border border-slate-800 mb-3">
             <button id="pc-pick-folder" type="button" class="w-full px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold" data-i18n="pickFolder">저장 폴더 선택</button>
+            <button id="pc-restore-folder" type="button" class="hidden w-full mt-2 px-3 py-2 rounded-lg bg-amber-700 text-white text-xs" data-i18n="restoreFolder"></button>
+            <details class="mt-2 text-xs text-slate-400"><summary data-i18n="storageDiagnostics"></summary><pre id="pc-storage-log" class="whitespace-pre-wrap break-all max-h-48 overflow-auto"></pre></details>
             <p id="pc-folder-status" class="text-[11px] text-slate-400 mt-2 break-all" data-i18n="folderNone"></p>
           </div>
           <!-- 접속된 휴대폰 목록 -->
@@ -728,22 +730,81 @@
       let diskReserved = 0;
       const folderStatus = document.getElementById('pc-folder-status');
       const folderButton = document.getElementById('pc-pick-folder');
-      if (typeof window.showDirectoryPicker !== 'function') {
-        folderButton.disabled = true;
-        localizeFolderLater();
+      const restoreButton = document.getElementById('pc-restore-folder');
+      let rememberedFolder = null, folderReady = Promise.resolve(), restoreStarted = false;
+      const storageLogs = [];
+      function storageLog(message) {
+        storageLogs.push(new Date().toISOString() + ' ' + message);
+        if (storageLogs.length > 100) storageLogs.shift();
+        document.getElementById('pc-storage-log').textContent = storageLogs.join('\n');
+        console.info('[SnapToPC storage]', message);
       }
-      function localizeFolderLater() { folderStatus.dataset.i18n = 'folderUnsupported'; }
+      function folderDB(mode, action) {
+        return new Promise((resolve,reject) => {
+          const req = indexedDB.open('snap2pc-storage-settings',1);
+          req.onupgradeneeded = () => req.result.createObjectStore('settings');
+          req.onerror = () => reject(req.error);
+          req.onblocked = () => reject(new Error('Settings DB blocked'));
+          req.onsuccess = () => {
+            const db = req.result;
+            try {
+              const tx = db.transaction('settings',mode);
+              const r = action(tx.objectStore('settings'));
+              tx.oncomplete = () => { db.close(); resolve(r.result); };
+              tx.onabort = tx.onerror = () => { db.close(); reject(tx.error || r.error); };
+            } catch(e) { db.close(); reject(e); }
+          };
+        });
+      }
+      async function activateFolder(folder) {
+        rememberedFolder = folder;
+        const permission = await folder.queryPermission({mode:'readwrite'});
+        storageLog('[PERMISSION] ' + permission + ' / ' + folder.name);
+        pcFolder = permission === 'granted' ? folder : null;
+        localize(folderStatus, pcFolder ? 'folderSelected' : 'folderPermission', [folder.name]);
+        restoreButton.classList.toggle('hidden', Boolean(pcFolder));
+        return pcFolder;
+      }
+      function restorePcFolder() {
+        if (restoreStarted) return folderReady;
+        restoreStarted = true;
+        folderReady = (async () => {
+          if (typeof window.showDirectoryPicker !== 'function') { folderButton.disabled = true; localize(folderStatus,'folderUnsupported'); return; }
+          localize(folderStatus,'folderRestoring');
+          try {
+            const folder = await folderDB('readonly', store => store.get('folder'));
+            if (folder) await activateFolder(folder);
+            else localize(folderStatus,'folderNone');
+          } catch(e) { storageLog('[RESTORE ERROR] '+e); localize(folderStatus,'folderNone'); }
+        })();
+        return folderReady;
+      }
       folderButton.addEventListener('click', async () => {
         try {
           const folder = await window.showDirectoryPicker({mode:'readwrite'});
-          pcFolder = folder;
-          localize(folderStatus, 'folderSelected', [folder.name]);
+          await folderReady;
+          await activateFolder(folder);
+          try { await folderDB('readwrite', store => store.put(folder,'folder')); }
+          catch(e) { storageLog('[PERSIST ERROR] '+e); showToast(tr('folderPersistError'),'error'); }
           document.getElementById('pc-auto-save').checked = true;
           renderPcVideos();
-        } catch (err) {
-          if (err.name !== 'AbortError') showToast(tr('folderError'), 'error');
-        }
+        } catch (err) { if (err.name !== 'AbortError') showToast(tr('folderError'), 'error'); }
       });
+      restoreButton.addEventListener('click', async () => {
+        try {
+          if (!rememberedFolder) return;
+          await rememberedFolder.requestPermission({mode:'readwrite'});
+          await activateFolder(rememberedFolder);
+        } catch(e) { storageLog('[PERMISSION ERROR] '+e); showToast(tr('folderError'),'error'); }
+      });
+      async function requireFolder() {
+        await folderReady;
+        if (!pcFolder || await pcFolder.queryPermission({mode:'readwrite'}) !== 'granted') {
+          if (rememberedFolder) await activateFolder(rememberedFolder);
+          throw new Error('Save folder unavailable');
+        }
+        return pcFolder;
+      }
       // Serialize folder scans and writes, including manual saves.
       let folderSaveTail = Promise.resolve();
       async function contentHash(blob) {
@@ -753,17 +814,29 @@
       function saveToFolder(folder, name, blob) {
         const task = folderSaveTail.then(async () => {
           const hash = await contentHash(blob);
+          storageLog(`[RECEIVE] ${name} ${blob.size} bytes SHA256=${hash}`);
+          let scanned = 0;
           // The directory itself is the persistent source of truth, including older files.
           for await (const entry of folder.values()) {
             if (entry.kind !== 'file') continue;
+            scanned++;
             let file;
             try { file = await entry.getFile(); }
             catch (err) { if (err.name === 'NotFoundError') continue; throw err; }
-            if (file.size === blob.size && await contentHash(file) === hash) {
+            if (file.size !== blob.size) continue;
+            const existingHash = await contentHash(file);
+            storageLog(`[COMPARE] ${entry.name} SHA256=${existingHash}`);
+            if (existingHash === hash) {
+              storageLog(`[DUPLICATE] ${entry.name} — no write`);
               return {handle:entry, name:entry.name, duplicate:true};
             }
           }
-          return {...await writeNewFile(folder,name,blob), duplicate:false};
+          storageLog(`[SCAN] ${scanned} files; no identical content`);
+          const saved = await writeNewFile(folder,name,blob);
+          const verified = await saved.handle.getFile();
+          if (verified.size !== blob.size || await contentHash(verified) !== hash) throw new Error("Disk verification failed");
+          storageLog(`[VERIFIED] ${saved.name} SHA256=${hash}`);
+          return {...saved, duplicate:false};
         });
         folderSaveTail = task.catch(() => {});
         return task;
@@ -789,8 +862,8 @@
         if (v.saving || v.handle || (v.downloadRequested && !pcFolder)) return;
         v.saving = true;
         renderPcVideos();
-        const folder = pcFolder;
         try {
+          const folder = await requireFolder();
           if (folder) {
             if (!v.blob) throw new Error('Missing source');
             const saved = await saveToFolder(folder, v.fileName, v.blob);
@@ -799,11 +872,9 @@
             v.url = null; v.blob = null; v.downloadRequested = false;
             v.saveFailed = false;
             showToast(tr(v.duplicate ? 'alreadySaved' : 'diskSaved'), 'success');
-          } else if (v.url) {
-            triggerDownload(v.url, v.fileName);
-            v.downloadRequested = true;
           }
-        } catch (_) {
+        } catch (err) {
+          storageLog("[SAVE ERROR] " + err);
           v.saveFailed = true; showToast(tr('folderError'), 'error');
         } finally { v.saving = false; renderPcVideos(); }
       }
@@ -1028,6 +1099,7 @@
 
       function initPcMode() {
         showView("pc");
+        restorePcFolder();
 
         const roomCode = currentPcRoomCode || getSavedPcRoomCode();
         currentPcRoomCode = roomCode;
@@ -1204,6 +1276,9 @@
           const transferKey = JSON.stringify([data.clientId, data.sessionId]);
           if (completedTransfers.has(transferKey)) return respond("ack");
           if (diskWrites.has(transferKey)) return respond("busy", {reason:"disk"});
+          if (document.getElementById('pc-auto-save').checked) {
+            try { await requireFolder(); } catch(e) { storageLog('[WAIT] '+e); return respond('retry',{reason:'folder'}); }
+          }
           const size = data.totalSize, count = data.totalChunks;
           if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_FILE || count !== Math.ceil(size / CHUNK_SIZE)) return respond("reject");
           const old = incomingSessions.get(key);
@@ -1266,17 +1341,18 @@
           };
 
           const autoSaveEl = document.getElementById("pc-auto-save");
-          const folder = autoSaveEl?.checked ? pcFolder : null;
-          if (folder) {
+          if (autoSaveEl?.checked) {
             if (diskWrites.has(sess.transferKey)) return respond('busy',{reason:'disk'});
             diskWrites.add(sess.transferKey); diskReserved += blob.size;
             incomingSessions.delete(key);
             try {
+              const folder = await requireFolder();
               const saved = await saveToFolder(folder,fileName,blob);
               videoRecord.handle = saved.handle;
               videoRecord.fileName = saved.name;
               videoRecord.duplicate = saved.duplicate;
             } catch (err) {
+              storageLog('[SAVE ERROR] '+err);
               showToast(tr('folderError'),'error');
               return respond('retry',{reason:'disk'});
             } finally {
@@ -1290,17 +1366,11 @@
           receivedVideos.unshift(videoRecord);
           incomingSessions.delete(key);
           completedTransfers.set(sess.transferKey, true);
+          storageLog(`[ACK] ${videoRecord.fileName} ${videoRecord.handle ? "disk verified" : "manual mode: memory only"}`);
           reply(conn, {type:"ack", sessionId:data.sessionId});
           renderActiveTransfers();
           renderFilterTabs();
           renderPcVideos();
-
-          if (!folder && autoSaveEl?.checked) {
-            triggerDownload(videoRecord.url, fileName);
-            videoRecord.downloadRequested = true;
-            renderPcVideos();
-          }
-
 
           showToast(tr("received" , [sess.deviceName, fileName]), "success");
         }
@@ -2196,7 +2266,8 @@
           transferRetry: "전송 지연 또는 실패: 원본 유지, 재시도합니다.",
           releaseMedia: "수신 목록에서 제거",
           pickFolder: "저장 폴더 선택",
-          folderNone: "폴더 미선택: 기존 브라우저 다운로드 방식",
+          folderNone: "저장 폴더 미선택: 자동 저장 대기 (Downloads 전환 없음)",
+          folderPermission: "{0}: 저장 권한 재승인 필요", folderRestoring: "저장 폴더 복원 중...", restoreFolder: "저장 권한 복구", storageDiagnostics: "저장 진단 로그", folderPersistError: "폴더 설정을 기억하지 못했습니다. 새로고침 후 다시 선택하세요.",
           folderSelected: "저장 폴더: {0} (저장 확인 후 자동 메모리 해제)",
           folderUnsupported: "이 브라우저는 폴더 저장을 지원하지 않습니다.",
           folderError: "폴더 저장 또는 읽기 실패. 휴대폰 원본을 확인하세요.",
@@ -2349,7 +2420,8 @@
           transferRetry: "Transfer delayed or failed. Original retained; retrying.",
           releaseMedia: "Remove received file",
           pickFolder: "Choose save folder",
-          folderNone: "No folder selected: browser download mode",
+          folderNone: "No folder selected: waiting (no Downloads fallback)",
+          folderPermission: "{0}: storage permission required", folderRestoring: "Restoring save folder...", restoreFolder: "Restore folder permission", storageDiagnostics: "Storage diagnostics", folderPersistError: "Could not remember folder. Select again after reload.",
           folderSelected: "Save folder: {0} (release memory after confirmed save)",
           folderUnsupported: "Folder saving is not supported in this browser.",
           folderError: "Folder read/write failed. Check the phone original.",
