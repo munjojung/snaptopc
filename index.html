@@ -56,7 +56,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.10</span></h1>
+          <h1 class="text-base font-bold tracking-tight text-white leading-none">SnapToPC <span class="text-[10px] text-slate-400">v1.1.11</span></h1>
           <p data-i18n="appSubtitle" class="text-[11px] text-slate-400 mt-0.5">P2P 다중 영상 전송기</p>
         </div>
       </div>
@@ -1009,14 +1009,14 @@
             if (v.url) URL.revokeObjectURL(v.url);
             v.url = null; v.blob = null; v.downloadRequested = false;
             v.saveFailed = false;
-            showToast(tr(v.duplicate ? 'alreadySaved' : 'diskSaved'), 'success');
+            showToast(tr(v.duplicate ? (v.mediaType === 'image' ? 'alreadySaved' : 'duplicateVideo') : 'diskSaved'), 'success');
           }
         } catch (err) {
           storageLog("[SAVE ERROR] " + err);
           v.saveFailed = true; showToast(tr('folderError'), 'error');
         } finally { v.saving = false; renderPcVideos(); }
       }
-      async function previewRecord(v, card) {
+      async function previewRecord(v, card, previewButton) {
         try {
           const file = await v.handle.getFile();
           const url = URL.createObjectURL(file);
@@ -1026,12 +1026,13 @@
           media.src = url;
           const close = document.createElement('button');
           close.className = 'text-xs p-2'; localize(close,'closePreview');
-          const cleanup = () => { media.removeAttribute('src'); media.remove(); close.remove(); URL.revokeObjectURL(url); };
+          const cleanup = () => { media.removeAttribute('src'); media.remove(); close.remove(); if (previewButton) previewButton.classList.remove("hidden"); URL.revokeObjectURL(url); };
           close.onclick = cleanup;
           // Revoke when the list is re-rendered, or when the user closes the preview.
           if (!card.isConnected) { cleanup(); return; }
           previewCleanups.add(cleanup);
           close.onclick = () => { cleanup(); previewCleanups.delete(cleanup); };
+          if (previewButton) previewButton.classList.add("hidden");
           card.prepend(media,close);
         } catch (_) { showToast(tr('folderError'),'error'); }
       }
@@ -1583,7 +1584,7 @@
           const card = document.createElement("div");
           card.className = "bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden flex flex-col";
           const isImage = v.mediaType === "image" || (v.blob && v.blob.type && v.blob.type.startsWith("image/"));
-          const previewHtml = !v.url ? `<div class="p-4 text-center text-emerald-300 text-xs" data-i18n="${v.duplicate ? "alreadySaved" : "diskSaved"}">${tr(v.duplicate ? "alreadySaved" : "diskSaved")}</div>` : isImage
+          const previewHtml = !v.url ? "" : isImage
             ? `<img src="${v.url}" alt="${escapeHtml(v.fileName)}" class="w-full aspect-video object-cover bg-black" />`
             : `<video src="${v.url}" controls class="w-full aspect-video bg-black"></video>`;
           card.innerHTML = `
@@ -1595,15 +1596,15 @@
                 <div class="text-[10px] text-slate-500">${formatBytes(v.size)} · ${v.timestamp}</div>
               </div>
               <button type="button" class="btn-dl shrink-0 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
-                <span data-i18n="${v.handle ? (v.duplicate ? "alreadySaved" : "diskSaved") : "save"}">${tr(v.handle ? (v.duplicate ? "alreadySaved" : "diskSaved") : "save")}</span>
+                <span data-i18n="${v.handle ? (v.duplicate ? (isImage ? "alreadySaved" : "duplicateVideo") : "diskSaved") : "save"}">${tr(v.handle ? (v.duplicate ? (isImage ? "alreadySaved" : "duplicateVideo") : "diskSaved") : "save")}</span>
               </button>
             </div>
           `;
           const saveButton = card.querySelector(".btn-dl");
           if (v.handle || v.saving || (v.downloadRequested && !pcFolder)) {
             saveButton.disabled = true;
-            saveButton.className = "btn-dl shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold " + (v.handle ? "bg-emerald-900/60 text-emerald-300" : "bg-slate-700 text-slate-300");
-            localize(saveButton, v.handle ? (v.duplicate ? "alreadySaved" : "diskSaved") : v.saving ? "copySaving" : "downloadRequested");
+            saveButton.className = "btn-dl shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold " + (v.handle ? (v.duplicate ? "bg-amber-900/60 text-amber-300" : "bg-emerald-900/60 text-emerald-300") : "bg-slate-700 text-slate-300");
+            localize(saveButton, v.handle ? (v.duplicate ? (isImage ? "alreadySaved" : "duplicateVideo") : "diskSaved") : v.saving ? "copySaving" : "downloadRequested");
           }
           saveButton.addEventListener("click", () => downloadRecord(v));
           if (!v.handle) {
@@ -1613,7 +1614,7 @@
           if (v.handle) {
             const preview = document.createElement('button');
             preview.className = 'text-xs text-cyan-300 p-2'; localize(preview,'openPreview');
-            preview.onclick = () => { preview.disabled = true; previewRecord(v,card).finally(()=>{preview.disabled=false;}); };
+            preview.onclick = () => { preview.disabled = true; previewRecord(v,card,preview).finally(()=>{preview.disabled=false;}); };
             card.appendChild(preview);
           }
           const release = document.createElement("button");
@@ -2409,7 +2410,7 @@
           folderSelected: "저장 폴더: {0} (저장 확인 후 자동 메모리 해제)",
           folderUnsupported: "이 브라우저는 폴더 저장을 지원하지 않습니다.",
           folderError: "폴더 저장 또는 읽기 실패. 휴대폰 원본을 확인하세요.",
-          diskSaved: "✓ 디스크 저장 완료", alreadySaved: "✓ 이미 저장됨",
+          diskSaved: "✓ 저장 완료", alreadySaved: "중복 사진 · 저장 생략", duplicateVideo: "중복 동영상 · 저장 생략",
           openPreview: "미리보기 열기",
           closePreview: "미리보기 닫기",
           diskRemoveConfirm: "목록만 제거합니다. 디스크 파일은 유지됩니다.",
@@ -2563,7 +2564,7 @@
           folderSelected: "Save folder: {0} (release memory after confirmed save)",
           folderUnsupported: "Folder saving is not supported in this browser.",
           folderError: "Folder read/write failed. Check the phone original.",
-          diskSaved: "✓ Saved to disk", alreadySaved: "✓ Already saved",
+          diskSaved: "✓ Saved", alreadySaved: "Duplicate photo · skipped", duplicateVideo: "Duplicate video · skipped",
           openPreview: "Open preview",
           closePreview: "Close preview",
           diskRemoveConfirm: "Remove from list only? Disk file is retained.",
